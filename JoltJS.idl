@@ -216,7 +216,6 @@ enum EConstraintSubType {
 	"EConstraintSubType_RackAndPinion",
 	"EConstraintSubType_Gear",
 	"EConstraintSubType_Pulley",
-	"EConstraintSubType_GearMesh",
 };
 
 enum EMotorState {
@@ -1757,33 +1756,6 @@ interface RackAndPinionConstraint {
 };
 
 RackAndPinionConstraint implements TwoBodyConstraint;
-
-// Brickwright fork addition (see BRICKWRIGHT.md): a gear mesh as a tooth contact at the pitch point
-interface GearMeshConstraintSettings {
-	void GearMeshConstraintSettings();
-
-	attribute EConstraintSpace mSpace;
-	[Value] attribute RVec3 mPoint1;
-	[Value] attribute Vec3 mHingeAxis1;
-	[Value] attribute RVec3 mPoint2;
-	[Value] attribute Vec3 mHingeAxis2;
-	[Value] attribute RVec3 mContactPoint;
-	attribute float mRatio;
-};
-
-GearMeshConstraintSettings implements TwoBodyConstraintSettings;
-
-interface GearMeshConstraint {
-	void SetConstraints([Const] Constraint inGear1, [Const] Constraint inGear2);
-	float GetRatio();
-	[Value] RVec3 GetContactPoint();
-	[Value] Vec3 GetContactNormal();
-	float GetPositionError();
-	float GetTotalLambda();
-};
-
-GearMeshConstraint implements TwoBodyConstraint;
-
 interface BodyID {
 	void BodyID();
 	void BodyID(unsigned long inIndexAndSequenceNumber);

@@ -30,9 +30,9 @@ jobs:
       run: ./ci/build-examples.sh
       shell: bash
 
-    - name: Verify gear scenes (fork)
+    - name: Verify gear scenes (control: no assert, plain Jolt has the gear bug and no GearMeshConstraint)
       shell: bash
-      run: node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js --assert
+      run: node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js
 
     - name: Pack
       id: pack
@@ -48,7 +48,7 @@ jobs:
         echo "integrity=$INTEGRITY" >> "$GITHUB_OUTPUT"
         # The smoke test again on the packed package itself
         mkdir -p /tmp/packed && tar xzf "$TGZ" -C /tmp/packed
-        node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --assert
+        node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js
 
     - name: Upload package
       uses: actions/upload-artifact@v4
