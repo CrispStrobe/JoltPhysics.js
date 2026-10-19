@@ -30,7 +30,7 @@ jobs:
       run: ./ci/build-examples.sh
       shell: bash
 
-    - name: Verify gear scenes (control: no assert, plain Jolt has the gear bug and no GearMeshConstraint)
+    - name: Verify gear scenes (control - no assert, plain Jolt has the gear bug and no GearMeshConstraint)
       shell: bash
       run: node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js
 
