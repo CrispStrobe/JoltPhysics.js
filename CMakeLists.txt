@@ -60,7 +60,7 @@ set(DISABLE_CUSTOM_ALLOCATOR ON)
 set(ENABLE_OBJECT_STREAM OFF)
 
 # Use 32-bit object layers to support more bits in ObjectLayerPairFilterMask
-set(OBJECT_LAYER_BITS 32)
+set(OBJECT_LAYER_BITS 32 CACHE STRING "Number of bits in ObjectLayer" FORCE) # Jolt master declares it as a cache variable (default 16), which would override a plain set()
 
 # Enable multi threading
 if (ENABLE_MULTI_THREADING)

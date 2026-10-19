@@ -4,7 +4,7 @@ Branch `brickwright/gear-mesh-master` (not released): this branch with the Jolt 
 `brickwright/gear-mesh-master` (`7006be437d970eadd55c6454da9c46f169bce68b` = upstream master `01adafb` + the same gear
 changes), to check the gear changes on current Jolt master. Binding changes: `PhysicsSettings.mDeterministicSimulation`
 removed from `JoltJS.idl` (removed upstream; the simulation is always deterministic), `-DJPH_DEBUG` added to the Debug
-glue defines (upstream no longer derives `JPH_DEBUG` from `NDEBUG`). The workflow runs the 1.1.0 regression-hash
+glue defines (upstream no longer derives `JPH_DEBUG` from `NDEBUG`), and `OBJECT_LAYER_BITS` set as a forced cache variable (master made it a cache string defaulting to 16, so the plain `set` no longer reached the library and the 32-bit glue failed to link). The workflow runs the 1.1.0 regression-hash
 comparison as its last step, so the gear assertions and the pack run even when upstream's non-gear changes since
 v5.6.0 move that hash.
 
