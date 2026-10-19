@@ -105,8 +105,9 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
         JoltPhysics
-        GIT_REPOSITORY "https://github.com/jrouwe/JoltPhysics"
-        GIT_TAG "v5.6.0"
+        # Brickwright fork: v5.6.0 + gear ratio fix + GearMeshConstraint (see BRICKWRIGHT.md)
+        GIT_REPOSITORY "https://github.com/CrispStrobe/JoltPhysics"
+        GIT_TAG "686dbe2af0c99268c388c94c301f3a9f77d5590b"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)
