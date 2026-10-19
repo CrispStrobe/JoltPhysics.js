@@ -2127,7 +2127,6 @@ interface PhysicsSettings {
 	attribute float mMinVelocityForRestitution;
 	attribute float mTimeBeforeSleep;
 	attribute float mPointVelocitySleepThreshold;
-	attribute boolean mDeterministicSimulation;
 	attribute boolean mConstraintWarmStart;
 	attribute boolean mUseBodyPairContactCache;
 	attribute boolean mUseManifoldReduction;

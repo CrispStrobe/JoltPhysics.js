@@ -105,9 +105,9 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
         JoltPhysics
-        # Brickwright fork: v5.6.0 + gear ratio fix + GearMeshConstraint (see BRICKWRIGHT.md)
+        # Brickwright fork: upstream master 01adafb + gear ratio fix + GearMeshConstraint (branch brickwright/gear-mesh-master)
         GIT_REPOSITORY "https://github.com/CrispStrobe/JoltPhysics"
-        GIT_TAG "fdedbe6cf40d4a35a3a54064dbaf3cf24419a827"
+        GIT_TAG "7006be437d970eadd55c6454da9c46f169bce68b"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)
@@ -202,7 +202,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 	set(JOLT_IDL_FILE ${JOLT_IDL_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/JoltJS-DebugRenderer.idl )
 	set(EMCC_GLUE_ARGS
 		${EMCC_GLUE_ARGS}
-		-DJPH_DEBUG_RENDERER -DJPH_PROFILE_ENABLED -D_DEBUG)
+		-DJPH_DEBUG_RENDERER -DJPH_PROFILE_ENABLED -D_DEBUG -DJPH_DEBUG) # Jolt master: JPH_DEBUG is a target define, no longer derived from NDEBUG
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 	set(JOLT_IDL_FILE ${JOLT_IDL_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/JoltJS-DebugRenderer.idl )
 	set(EMCC_GLUE_ARGS

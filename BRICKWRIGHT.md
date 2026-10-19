@@ -1,5 +1,13 @@
 # Brickwright fork of JoltPhysics.js
 
+Branch `brickwright/gear-mesh-master` (not released): this branch with the Jolt pin moved to the JoltPhysics fork's
+`brickwright/gear-mesh-master` (`7006be437d970eadd55c6454da9c46f169bce68b` = upstream master `01adafb` + the same gear
+changes), to check the gear changes on current Jolt master. Binding changes: `PhysicsSettings.mDeterministicSimulation`
+removed from `JoltJS.idl` (removed upstream; the simulation is always deterministic), `-DJPH_DEBUG` added to the Debug
+glue defines (upstream no longer derives `JPH_DEBUG` from `NDEBUG`). The workflow runs the 1.1.0 regression-hash
+comparison as its last step, so the gear assertions and the pack run even when upstream's non-gear changes since
+v5.6.0 move that hash.
+
 Branch `brickwright/gear-mesh` = upstream tag **1.1.0** (`c9c122b`) built against the Brickwright JoltPhysics fork
 (<https://github.com/CrispStrobe/JoltPhysics/tree/brickwright/gear-mesh>, commit `fdedbe6` = Jolt v5.6.0 + gear
 fixes). Nothing here goes upstream (owner decision). JoltPhysics.js and Jolt Physics are MIT licensed; `LICENSE` is

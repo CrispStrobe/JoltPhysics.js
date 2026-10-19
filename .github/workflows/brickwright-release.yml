@@ -30,19 +30,9 @@ jobs:
       run: ./ci/build-examples.sh
       shell: bash
 
-    - name: Verify gear scenes (fork) and compare with jolt-physics 1.1.0
+    - name: Verify gear scenes (fork)
       shell: bash
-      run: |
-        set -e
-        node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js --assert
-        mkdir -p /tmp/base && (cd /tmp/base && npm pack jolt-physics@1.1.0 --silent && tar xzf jolt-physics-1.1.0.tgz)
-        node brickwright/verify.mjs /tmp/base/package/dist/jolt-physics.wasm-compat.js
-        node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js --json > /tmp/fork.json
-        node brickwright/verify.mjs /tmp/base/package/dist/jolt-physics.wasm-compat.js --json > /tmp/base.json
-        node -e '
-          const f = require("/tmp/fork.json").results.regression, b = require("/tmp/base.json").results.regression;
-          console.log("regression fork", f.hash, "1.1.0", b.hash);
-          if (f.hash !== b.hash) { console.error("non-gear physics changed"); process.exit(1); }'
+      run: node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js --assert
 
     - name: Pack
       id: pack
@@ -68,6 +58,20 @@ jobs:
           ${{ steps.pack.outputs.tgz }}
           ${{ steps.pack.outputs.tgz }}.sha256
           ${{ steps.pack.outputs.tgz }}.integrity
+
+    - name: Compare with jolt-physics 1.1.0 (non-gear regression hash)
+      shell: bash
+      run: |
+        set -e
+        mkdir -p /tmp/base && (cd /tmp/base && npm pack jolt-physics@1.1.0 --silent && tar xzf jolt-physics-1.1.0.tgz)
+        node brickwright/verify.mjs /tmp/base/package/dist/jolt-physics.wasm-compat.js
+        node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js --json > /tmp/fork.json
+        node brickwright/verify.mjs /tmp/base/package/dist/jolt-physics.wasm-compat.js --json > /tmp/base.json
+        cat /tmp/fork.json; echo; cat /tmp/base.json; echo
+        node -e '
+          const f = require("/tmp/fork.json").results.regression, b = require("/tmp/base.json").results.regression;
+          console.log("regression fork", f.hash, "1.1.0", b.hash);
+          if (f.hash !== b.hash) { console.error("non-gear physics changed"); process.exit(1); }'
 
     - name: Release
       if: startsWith(github.ref, 'refs/tags/v')
