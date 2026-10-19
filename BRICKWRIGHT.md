@@ -4,9 +4,9 @@ Branch `brickwright/gear-mesh-master` (not released): this branch with the Jolt 
 `brickwright/gear-mesh-master` (`7006be437d970eadd55c6454da9c46f169bce68b` = upstream master `01adafb` + the same gear
 changes), to check the gear changes on current Jolt master. Binding changes: `PhysicsSettings.mDeterministicSimulation`
 removed from `JoltJS.idl` (removed upstream; the simulation is always deterministic), `-DJPH_DEBUG` added to the Debug
-glue defines (upstream no longer derives `JPH_DEBUG` from `NDEBUG`), and `OBJECT_LAYER_BITS` set as a forced cache variable (master made it a cache string defaulting to 16, so the plain `set` no longer reached the library and the 32-bit glue failed to link). The workflow runs the 1.1.0 regression-hash
-comparison as its last step, so the gear assertions and the pack run even when upstream's non-gear changes since
-v5.6.0 move that hash.
+glue defines (upstream no longer derives `JPH_DEBUG` from `NDEBUG`), and `OBJECT_LAYER_BITS` set as a forced cache variable (master made it a cache string defaulting to 16, so the plain `set` no longer reached the library and the 32-bit glue failed to link). The non-gear regression hash is checked against `f7b0121879392938`, the hash of a control build of plain upstream
+master `01adafb` without the gear commits (branch `brickwright/plain-master-control`, Actions run 39223975871); 1.1.0
+gives `582ce7fb0bd82275`, so upstream's non-gear changes since v5.6.0, not the gear commits, move it.
 
 Branch `brickwright/gear-mesh` = upstream tag **1.1.0** (`c9c122b`) built against the Brickwright JoltPhysics fork
 (<https://github.com/CrispStrobe/JoltPhysics/tree/brickwright/gear-mesh>, commit `fdedbe6` = Jolt v5.6.0 + gear
