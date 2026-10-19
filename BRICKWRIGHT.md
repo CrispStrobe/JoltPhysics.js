@@ -47,7 +47,53 @@ GitHub Actions only (`brickwright-release.yml`): upstream `ci/build-examples.sh`
 the packed tarball, a comparison run against npm `jolt-physics@1.1.0` (the non-gear regression scene must hash
 identically), `npm pack`, and on a `v*-bw.*` tag a GitHub Release with the tarball, its sha256 and npm integrity.
 
-RELEASE_SECTION
+## Release `v1.1.0-bw.1`
+
+* Release: <https://github.com/CrispStrobe/JoltPhysics.js/releases/tag/v1.1.0-bw.1> (workflow run
+  <https://github.com/CrispStrobe/JoltPhysics.js/actions/runs/39211374047>)
+* Tarball: `https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.1/jolt-physics-1.1.0-bw.1.tgz`
+* sha256 `6ba56b5743046f7ccbb650f05dc5c369567715faa5cf852a10f6d6b220db6fd4`
+* npm integrity `sha512-4rL7nWPcCKRaQOPozSSXb9FnuftEdybCJIAeF4QGdY1T3zYs7T5syqBqf/8RjHkWJmlBhZVokoXU1EFEn9rOzw==`
+* Built from this branch at `0f21a6b` with JoltPhysics fork `fdedbe6`. The build is reproducible: the branch run
+  before the tag produced the same sha256.
+
+## Using it in Brickwright (notes for the integration owner)
+
+Pin: `"jolt-physics": "https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.1/jolt-physics-1.1.0-bw.1.tgz"`
+(package.json and `scripts/integrate.mjs`), lockfile `integrity` as above. Imports (`jolt-physics/wasm-compat`) are
+unchanged. `GearConstraint` alone already passes torque × ratio after the pin; the steps below remove the workarounds.
+
+```js
+// jolt-core.js, 'gear' kind (static AND moving frames) - replaces buildGearConstraint + movingFrameMesh:
+const meshGear = (id, j1, j2, ratio, steps) => {
+    const s1 = gearSide(j1), s2 = gearSide(j2);           // as now: {body, sign}; sign = -1 when the gear is hinge body1
+    const ms = new J.GearMeshConstraintSettings();
+    ms.mSpace = J.EConstraintSpace_WorldSpace;
+    ms.mPoint1 = new J.RVec3(...j1.point); ms.mHingeAxis1 = new J.Vec3(...j1.axis.map(v => v * s1.sign));
+    ms.mPoint2 = new J.RVec3(...j2.point); ms.mHingeAxis2 = new J.Vec3(...j2.axis.map(v => v * s2.sign));
+    ms.mRatio = ratio;                                     // the contract ratio as is: w(joint2) = ratio * w(joint1)
+    // worm only: ms.mContactPoint = point on the common perpendicular of the two axes, worm pitch radius from the worm axis
+    ms.mNumVelocityStepsOverride = steps; ms.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
+    const c = J.castObject(ms.Create(getBodyForId(s1.body), getBodyForId(s2.body)), J.GearMeshConstraint);
+    J.destroy(ms);
+    physicsSystem.AddConstraint(c); allConstraints.push(c);
+    c.SetConstraints(hingeMap.get(j1.id).hinge, hingeMap.get(j2.id).hinge);  // frames + drift correction: required
+    return c;
+};
+```
+
+* Delete: the `|ratio| <= 1` swap and axis flip (the divergence was the ratio bug), `movingFrameMesh` and its
+  per-step re-made contact / `slip` bookkeeping (the mesh is exact on a moving frame), and the `relativeGear`
+  carrier path's tooth contact: a planet on a carrier meshing with a sun works with `meshGear` as long as each
+  gear's hinge is passed (its other body is that gear's frame).
+* `worm`: `meshGear(..., g.ratio, WORM_VELOCITY_STEPS)` with `mContactPoint`; keep `wormHolds` (no friction in the
+  mesh, so no self-locking).
+* `rackAndPinion`: unchanged (it was right). Do not call its `SetConstraints` unless the hinge/slider axes have the
+  same signs as `mHingeAxis`/`mSliderAxis` (its drift term reads raw joint values).
+* `GEAR_MIN_INERTIA` / `GEAR_VELOCITY_STEPS`: keep at first; with the ratio fixed the floor may be lowered -
+  re-measure the stalled-arm case before changing it.
+* Re-run `test/bw-sim-validation-2.test.mjs` (gear sections) and the Excavator dig cycle.
+
 
 ## Results
 
@@ -66,5 +112,5 @@ RELEASE_SECTION
 | Rack and pinion travel per pinion radian (expected −0.008 m) | −0.008 | −0.008 | — |
 
 Gear bodies: 8T I = 1e-4 / 3e-5 kg·m², 24T 9e-4 / 9e-5 kg·m² (Brickwright floors gear inertia at 3e-5),
-30 velocity / 10 position steps on the gear constraints, 60 Hz. The worm's 0.9 % is the frame tumbling (Jolt has
-no gyroscopic term); the spur mesh, whose frame does not tumble, conserves L to 6e-7.
+30 velocity / 10 position steps on the gear constraints, 60 Hz. The worm's 0.9 % falls to 0.1 % when the frame's inertia is
+made isotropic: most of it is the tumbling frame (Jolt integrates without a gyroscopic term), not the mesh.
