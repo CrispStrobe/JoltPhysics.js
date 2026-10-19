@@ -107,7 +107,7 @@ FetchContent_Declare(
         JoltPhysics
         # Brickwright fork: v5.6.0 + gear ratio fix + GearMeshConstraint (see BRICKWRIGHT.md)
         GIT_REPOSITORY "https://github.com/CrispStrobe/JoltPhysics"
-        GIT_TAG "686dbe2af0c99268c388c94c301f3a9f77d5590b"
+        GIT_TAG "fdedbe6cf40d4a35a3a54064dbaf3cf24419a827"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)

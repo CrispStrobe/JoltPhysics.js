@@ -224,20 +224,26 @@ function sceneFloating(kind, worm = false) {
 }
 const qOf = b => { const q = b.GetRotation(); return [q.GetX(), q.GetY(), q.GetZ(), q.GetW()]; };
 
-/** C: static balance on a gear train (axes horizontal): m1 on the 8T at arm L vs m2 on the 24T at arm L. */
+/**
+ * C: static balance on a 1:3 train (axes horizontal, static frame). Each gear carries a drum of radius L with a
+ * weight hanging from it (a constant torque m g L, applied as a torque): m1 on the 8T, m2 on the 24T, both pulling
+ * the same way round. The train balances at m2 = 3 m1. Gravity also pulls on the gear bodies (on their axes).
+ */
 function sceneBalance(kind, m2factor) {
     const w = makeWorld([0, -9.81, 0]);
     const frame = w.body({ pos: [0, -0.05, 0], motion: 'static' });
-    const c1 = [0, 0, 0], c2 = [0.016, 0, 0], m1 = 0.01, L = 0.02;
+    const c1 = [0, 0, 0], c2 = [0.016, 0, 0], m1 = 0.01, L = 0.02, g = 9.81;
     const g1 = w.body({ pos: c1, mass: 0.005, inertia: [3e-5, 3e-5, 3e-5] });
     const g2 = w.body({ pos: c2, mass: 0.01, inertia: [3e-5, 3e-5, 3e-5] });
-    const l1 = w.body({ pos: add(c1, [L, 0, 0.01]), mass: m1, inertia: [1e-7, 1e-7, 1e-7] });
-    const l2 = w.body({ pos: add(c2, [L, 0, 0.01]), mass: m1 * m2factor, inertia: [1e-7, 1e-7, 1e-7] });
-    w.fixed(g1, l1); w.fixed(g2, l2);
     const h1 = w.hinge(frame, g1, c1, Z), h2 = w.hinge(frame, g2, c2, Z);
     couple(w, kind, { g1, g2, h1, h2, c1, c2, axis1: Z, axis2: Z, ratio: -1 / 3 });
     let maxA = 0;
-    for (let t = 0; t < 2 / DT; t++) { w.step(); maxA = Math.max(maxA, Math.abs(h1.GetCurrentAngle())); }
+    for (let t = 0; t < 2 / DT; t++) {
+        g1.b.AddTorque(new J.Vec3(0, 0, -m1 * g * L));
+        g2.b.AddTorque(new J.Vec3(0, 0, -m1 * m2factor * g * L));
+        w.step();
+        maxA = Math.max(maxA, Math.abs(h1.GetCurrentAngle()));
+    }
     const out = { angle1Deg: h1.GetCurrentAngle() * 180 / Math.PI, maxAngle1Deg: maxA * 180 / Math.PI };
     w.destroy();
     return out;
@@ -328,6 +334,7 @@ if (args.includes('--assert')) {
         ok(m.floating.relL < 0.01, `mesh: floating frame |L| ${m.floating.relL} of the gear's`);
         ok(near(m.floating.ratio, -1 / 3, 0.01), `mesh: floating ratio ${m.floating.ratio}`);
         ok(Math.abs(m.held.phaseErrDeg2) < 0.5, `mesh: held phase error ${m.held.phaseErrDeg2} deg`);
+        ok(Math.abs(m.held.gear1Deg) < 0.5, `mesh: held gear moved ${m.held.gear1Deg} deg`);
         ok(m.worm.relL < 0.01 && near(m.worm.ratio, 1 / 24, 0.02), `mesh: worm L ${m.worm.relL} ratio ${m.worm.ratio}`);
     }
     if (fails.length) { console.error('FAIL\n' + fails.join('\n')); process.exit(1); }
