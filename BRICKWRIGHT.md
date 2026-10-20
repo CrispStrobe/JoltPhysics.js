@@ -21,7 +21,14 @@ upstream's, unchanged.
 2. **New `GearMeshConstraint`**: a mesh as a tooth contact at the pitch point (linear + angular Jacobian for both
    gears), so the reaction loads the axles and a gearbox on a free frame conserves angular momentum. Works for
    parallel axes (spur, internal: pitch point from the ratio) and crossed axes (worm, bevel: pitch point given).
-3. Package version `1.1.0-bw.1`; package name stays `jolt-physics`, so `import 'jolt-physics/wasm-compat'` is
+3. **A bounce across two bodies (1.1.0-bw.3)**: a `LinearCast` body whose impact would bounce while it touches
+   another body as well (a brick landing across two beams) is no longer resolved by the CCD step at the first body's
+   contact point (it spun and turned over; two loose beams put the whole reaction on one); the next step's discrete
+   solve applies the restitution with every manifold. Single-body bounces and non-bouncing impacts are unchanged.
+   C++ change and rationale: the JoltPhysics fork's `BRICKWRIGHT.md` section 3 (commit `a40ff0b`).
+4. **`MaterialPairs` (1.1.0-bw.3)**, bindings only (`JoltJS.h`): restitution per material PAIR instead of Jolt's
+   max(e1, e2). See the JS API below.
+5. Package version `1.1.0-bw.3`; package name stays `jolt-physics`, so `import 'jolt-physics/wasm-compat'` is
    unchanged. All flavours are built by upstream's `build.sh`.
 
 Files: `CMakeLists.txt` (FetchContent → fork commit), `JoltJS.idl` / `JoltJS.h` (bindings),
@@ -47,6 +54,18 @@ mesh.SetConstraints(hinge1, hinge2);  // the hinges holding gear 1 / gear 2 (gea
 
 Worm: `mPoint1`/`mHingeAxis1` = worm, `mPoint2`/`mHingeAxis2` = wheel, `mRatio = ±1/teeth` (sign by thread hand,
 about the given axes), `mContactPoint` = the worm's pitch point towards the wheel. No friction: no self-locking.
+
+### Restitution per material pair (1.1.0-bw.3)
+
+```js
+// A body's material is the low 8 bits of its user data (0 = none). Materials 1 .. 31.
+bodyCreationSettings.mUserData = 2;                       // e.g. 1 ABS, 2 rubber
+Jolt.MaterialPairs.prototype.sSetRestitution(1, 2, 0.07); // both orders
+Jolt.MaterialPairs.prototype.sInstall(physicsSystem);     // physicsSystem.SetCombineRestitution(table lookup)
+// A contact between two bodies with materials and a table entry gets that e; any other pair Jolt's max(e1, e2).
+// sGetRestitution(a, b) (-1: no entry), sClear(). The table is one per module (a C++ combine function has no
+// context), shared by every PhysicsSystem that installs it.
+```
 
 ## Build and release
 
@@ -122,3 +141,13 @@ const meshGear = (id, j1, j2, ratio, steps) => {
 Gear bodies: 8T I = 1e-4 / 3e-5 kg·m², 24T 9e-4 / 9e-5 kg·m² (Brickwright floors gear inertia at 3e-5),
 30 velocity / 10 position steps on the gear constraints, 60 Hz. The worm's 0.9 % falls to 0.1 % when the frame's inertia is
 made isotropic: most of it is the tumbling frame (Jolt integrates without a gyroscopic term), not the mesh.
+
+## Release `v1.1.0-bw.3` (2026-10-20)
+
+Built from `brickwright/gear-mesh-master` with the JoltPhysics fork at `a40ff0b` (change 3) and `MaterialPairs`
+(change 4). `verify.mjs` adds scene F (a bounce across two beams: the bounce is e·v and the rebound e²·h, also off two
+loose beams, where upstream gives 0.96·e·v and 4 % instead of 16 %) and scene G (material pairs: the table's 0.07
+where both bodies have a material, Jolt's max 0.4 otherwise). Scene E's hash (`f7b0121879392938`) is unchanged:
+nothing without a bouncing multi-body CCD impact or an installed table moves. Release notes carry the tarball's
+sha256 and npm integrity.
+

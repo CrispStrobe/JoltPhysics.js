@@ -2067,6 +2067,14 @@ interface StateRecorder {
 	boolean IsLastPart();
 };
 
+// Brickwright fork: restitution per material pair (JoltJS.h MaterialPairs; BRICKWRIGHT.md)
+interface MaterialPairs {
+	static void sSetRestitution(unsigned long inMaterial1, unsigned long inMaterial2, float inRestitution);
+	static float sGetRestitution(unsigned long inMaterial1, unsigned long inMaterial2);
+	static void sClear();
+	static void sInstall(PhysicsSystem inSystem);
+};
+
 interface StateRecorderEm {
 };
 

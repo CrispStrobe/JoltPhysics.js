@@ -100,6 +100,7 @@ function makeWorld(gravity = [0, 0, 0]) {
             return c;
         },
         step() { ji.Step(DT, 1); },
+        stepDt(dt) { ji.Step(dt, 1); },
         // Total linear and angular momentum (about the origin) of the dynamic bodies
         momentum() {
             let P = [0, 0, 0], L = [0, 0, 0];
@@ -301,6 +302,88 @@ function sceneRegression() {
     return out;
 }
 
+/**
+ * F: continuous collision with a bounce (fork change 3, BRICKWRIGHT.md). A 2 × 4 brick-sized box (32 × 9.6 × 16 mm,
+ * 2.7 g) falls 20 cm flat onto two 8 mm beams 16 mm apart (static, or two loose dynamic ones on a floor), restitution
+ * 0.4 on everything, LinearCast, 200 Hz: it hits both at once. Upstream resolves the impact against the one beam the
+ * cast hit first, off the brick's centre: it spins. The fork leaves the bounce to the next discrete step: straight up.
+ * Also on a single floor (control: both builds bounce straight) and with restitution 0 (both stop dead).
+ */
+function sceneCCDBounce({ restitution = 0.4, twoBeams = true, dynamicBeams = false, dropM = 0.2 } = {}) {
+    const w = makeWorld([0, -9.81, 0]);
+    const ps = new J.PhysicsSettings();
+    ps.mAllowSleeping = false; ps.mSpeculativeContactDistance = 0.002; ps.mPenetrationSlop = 0.0002; ps.mLinearCastThreshold = 0.25;
+    w.ps.SetPhysicsSettings(ps); J.destroy(ps);
+    const mk = (pos, half, motion, mass) => {
+        const sh = new J.BoxShape(new J.Vec3(...half), Math.min(0.0005, 0.25 * Math.min(...half)));
+        const mt = motion === 'static' ? J.EMotionType_Static : J.EMotionType_Dynamic;
+        const bcs = new J.BodyCreationSettings(sh, new J.RVec3(...pos), new J.Quat(0, 0, 0, 1), mt, motion === 'static' ? L_STATIC : L_MOVING);
+        bcs.mRestitution = restitution;
+        if (mt === J.EMotionType_Dynamic) {
+            bcs.mMotionQuality = J.EMotionQuality_LinearCast;
+            bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
+            const mp = bcs.mMassPropertiesOverride; mp.mMass = mass; bcs.mMassPropertiesOverride = mp;
+        }
+        const b = w.bi.CreateBody(bcs); J.destroy(bcs); w.bi.AddBody(b.GetID(), J.EActivation_Activate);
+        return b;
+    };
+    mk([0, -0.01, 0], [0.5, 0.01, 0.5], 'static');
+    const beamHalf = [0.06, 0.004, 0.004];
+    if (twoBeams) for (const z of [-0.008, 0.008]) mk([0, 0.004, z], beamHalf, dynamicBeams ? 'dynamic' : 'static', 0.0048);
+    const top = twoBeams ? 0.008 : 0;
+    const brick = mk([0, top + 0.0048 + dropM, 0], [0.016, 0.0048, 0.008], 'dynamic', 0.0027);
+    let vIn = 0, vOut = null, maxSpin = 0, prevV = 0, apex = -Infinity, lowest = Infinity;
+    const DT200 = 1 / 200;
+    for (let i = 0; i < 1.2 / DT200; i++) {
+        w.stepDt(DT200); // 200 Hz, as Brickwright steps
+        const v = v3(brick.GetLinearVelocity())[1];
+        const om = norm(v3(brick.GetAngularVelocity()));
+        const y = v3(brick.GetCenterOfMassPosition())[1];
+        if (vOut === null && v > 0) { vOut = v; vIn = -prevV; }
+        if (vOut !== null) { maxSpin = Math.max(maxSpin, om); if (v > 0 || apex === -Infinity) apex = Math.max(apex, y); }
+        lowest = Math.min(lowest, y);
+        prevV = v;
+    }
+    const q = brick.GetRotation();
+    const tiltDeg = 2 * Math.acos(Math.min(1, Math.abs(q.GetW()))) * 180 / Math.PI;
+    const out = { restitution, twoBeams, dynamicBeams, dropM, bounce: vOut === null ? 0 : vOut / vIn, maxSpin, tiltDeg, rebound: vOut === null ? 0 : (apex - lowest) / dropM };
+    w.destroy();
+    return out;
+}
+
+/**
+ * G: restitution per material pair (fork change 4, JoltJS.h MaterialPairs). A body's material is the low 8 bits of its
+ * user data. A box of material 1 (e 0.4) dropped 20 cm on a floor of material 2 (e 0.05): Jolt's max rule bounces it at
+ * 0.4; with the pair (1, 2) = 0.07 in the table and the table installed, at 0.07. Bodies without a material: max rule.
+ */
+function sceneMaterialPairs({ install = true, userData = true } = {}) {
+    const HAS_PAIRS = typeof J.MaterialPairs === 'function';
+    if (!HAS_PAIRS) return { skipped: true };
+    const w = makeWorld([0, -9.81, 0]);
+    J.MaterialPairs.prototype.sClear();
+    J.MaterialPairs.prototype.sSetRestitution(1, 2, 0.07);
+    if (install) J.MaterialPairs.prototype.sInstall(w.ps);
+    const mk = (pos, half, dyn, e, material) => {
+        const bcs = new J.BodyCreationSettings(new J.BoxShape(new J.Vec3(...half)), new J.RVec3(...pos), new J.Quat(0, 0, 0, 1), dyn ? J.EMotionType_Dynamic : J.EMotionType_Static, dyn ? L_MOVING : L_STATIC);
+        bcs.mRestitution = e;
+        if (userData) bcs.mUserData = material;
+        const b = w.bi.CreateBody(bcs); J.destroy(bcs); w.bi.AddBody(b.GetID(), J.EActivation_Activate);
+        return b;
+    };
+    mk([0, -0.1, 0], [1, 0.1, 1], false, 0.05, 2);
+    const box = mk([0, 0.25, 0], [0.05, 0.05, 0.05], true, 0.4, 1);
+    let prev = 0, bounce = null;
+    for (let i = 0; i < 0.5 / DT && bounce === null; i++) {
+        w.step();
+        const v = box.GetLinearVelocity().GetY();
+        if (v > 0) bounce = v / -prev;
+        prev = v;
+    }
+    J.MaterialPairs.prototype.sClear();
+    w.destroy();
+    return { install, userData, bounce, lookup: J.MaterialPairs.prototype.sGetRestitution(1, 2) };
+}
+
 for (const k of kinds) {
     results[k] = {
         discs: sceneDiscs(k),
@@ -312,6 +395,18 @@ for (const k of kinds) {
 }
 if (HAS_MESH) results.mesh.worm = sceneFloating('mesh', true);
 results.regression = sceneRegression();
+results.materialPairs = {
+    table: sceneMaterialPairs(),
+    notInstalled: sceneMaterialPairs({ install: false }),
+    noMaterial: sceneMaterialPairs({ userData: false }),
+};
+results.ccdBounce = {
+    twoStatic: sceneCCDBounce(),
+    twoLoose: sceneCCDBounce({ dynamicBeams: true }),
+    twoStatic1m: sceneCCDBounce({ dropM: 1 }),
+    floor: sceneCCDBounce({ twoBeams: false }),
+    inelastic: sceneCCDBounce({ restitution: 0 }),
+};
 
 if (args.includes('--json')) console.log(JSON.stringify({ module: modPath, hasMesh: HAS_MESH, results }, null, 1));
 else {
@@ -336,6 +431,23 @@ if (args.includes('--assert')) {
         ok(Math.abs(m.held.phaseErrDeg2) < 0.5, `mesh: held phase error ${m.held.phaseErrDeg2} deg`);
         ok(Math.abs(m.held.gear1Deg) < 0.5, `mesh: held gear moved ${m.held.gear1Deg} deg`);
         ok(m.worm.relL < 0.01 && near(m.worm.ratio, 1 / 24, 0.02), `mesh: worm L ${m.worm.relL} ratio ${m.worm.ratio}`);
+    }
+    // Fork change 4 (material pairs): the table's e where both bodies have a material and the table is installed.
+    if (typeof J.MaterialPairs === 'function') {
+        const m = results.materialPairs;
+        ok(Math.abs(m.table.bounce - 0.07) < 0.01, `materialPairs: bounce ${m.table.bounce} for the pair's 0.07`);
+        ok(Math.abs(m.notInstalled.bounce - 0.4) < 0.02, `materialPairs: not installed, bounce ${m.notInstalled.bounce} for max 0.4`);
+        ok(Math.abs(m.noMaterial.bounce - 0.4) < 0.02, `materialPairs: no material, bounce ${m.noMaterial.bounce} for max 0.4`);
+        ok(m.table.lookup === -1, 'materialPairs: sClear forgets the entries');
+    }
+    // Fork change 3 (CCD bounce, BRICKWRIGHT.md): every bounce leaves at e·v and rises to e²·h, also off two loose
+    // beams (upstream: the first-hit beam took the whole CCD impulse, the brick left at ~0.96 of e·v and rose to 4 %).
+    if (HAS_MESH) for (const [k, c] of Object.entries(results.ccdBounce)) {
+        ok(c.maxSpin < 0.5, `ccdBounce ${k}: spin ${c.maxSpin} rad/s after the bounce`);
+        if (c.restitution > 0) {
+            ok(Math.abs(c.bounce - c.restitution) < 0.03, `ccdBounce ${k}: bounce ${c.bounce} for e ${c.restitution}`);
+            ok(Math.abs(c.rebound / c.restitution ** 2 - 1) < 0.15, `ccdBounce ${k}: rebound ${c.rebound} of the drop for e² ${c.restitution ** 2}`);
+        } else ok(c.rebound < 0.001, `ccdBounce ${k}: an inelastic impact rebounded ${c.rebound} of the drop`);
     }
     if (fails.length) { console.error('FAIL\n' + fails.join('\n')); process.exit(1); }
     console.log('ASSERT OK');

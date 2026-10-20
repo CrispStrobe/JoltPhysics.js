@@ -105,9 +105,9 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
         JoltPhysics
-        # Brickwright fork: upstream master 01adafb + gear ratio fix + GearMeshConstraint (branch brickwright/gear-mesh-master)
+        # Brickwright fork: upstream master 01adafb + gear ratio fix + GearMeshConstraint + CCD bounce fix (branch brickwright/gear-mesh-master)
         GIT_REPOSITORY "https://github.com/CrispStrobe/JoltPhysics"
-        GIT_TAG "7006be437d970eadd55c6454da9c46f169bce68b"
+        GIT_TAG "a40ff0b7e41f6d5a989775934e55d0d9f5465704"
 		SOURCE_SUBDIR "Build"
 )
 FetchContent_MakeAvailable(JoltPhysics)

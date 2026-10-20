@@ -871,3 +871,65 @@ public:
 	/// Value used to create gaps in the height field
 	static constexpr float	cNoCollisionValue = HeightFieldShapeConstants::cNoCollisionValue;
 };
+
+/// Brickwright fork: restitution per material PAIR (Jolt combines two bodies' restitution as max(e1, e2) by default).
+/// A body's material is the low 8 bits of its user data (Body::GetUserData; 0 = no material). When both bodies of a
+/// contact have a material and the table has an entry for that pair, the contact's restitution is that entry;
+/// otherwise Jolt's max rule. The table is one per module (the combine function is a plain C++ function pointer,
+/// with no context): every PhysicsSystem that calls sInstall shares it.
+class MaterialPairs
+{
+public:
+	static constexpr uint	cMaxMaterials = 32;
+
+	/// e for contacts between material 1 and material 2 (both orders); materials 1 .. cMaxMaterials - 1
+	static void				sSetRestitution(uint inMaterial1, uint inMaterial2, float inRestitution)
+	{
+		if (inMaterial1 == 0 || inMaterial2 == 0 || inMaterial1 >= cMaxMaterials || inMaterial2 >= cMaxMaterials)
+			return;
+		sTable()[inMaterial1 * cMaxMaterials + inMaterial2] = inRestitution;
+		sTable()[inMaterial2 * cMaxMaterials + inMaterial1] = inRestitution;
+	}
+
+	/// The pair's entry, or -1 when it has none
+	static float			sGetRestitution(uint inMaterial1, uint inMaterial2)
+	{
+		if (inMaterial1 == 0 || inMaterial2 == 0 || inMaterial1 >= cMaxMaterials || inMaterial2 >= cMaxMaterials)
+			return -1.0f;
+		return sTable()[inMaterial1 * cMaxMaterials + inMaterial2];
+	}
+
+	/// Forget every entry (every pair falls back to Jolt's max rule)
+	static void				sClear()
+	{
+		float *table = sTable();
+		for (uint i = 0; i < cMaxMaterials * cMaxMaterials; ++i)
+			table[i] = -1.0f;
+	}
+
+	/// Make inSystem combine restitution through the table
+	static void				sInstall(PhysicsSystem *inSystem)
+	{
+		inSystem->SetCombineRestitution(&sCombine);
+	}
+
+private:
+	static float *			sTable()
+	{
+		static float table[cMaxMaterials * cMaxMaterials];
+		static bool initialized = false;
+		if (!initialized)
+		{
+			for (uint i = 0; i < cMaxMaterials * cMaxMaterials; ++i)
+				table[i] = -1.0f;
+			initialized = true;
+		}
+		return table;
+	}
+
+	static float			sCombine(const Body &inBody1, const SubShapeID &, const Body &inBody2, const SubShapeID &)
+	{
+		float e = sGetRestitution(uint(inBody1.GetUserData() & 0xff), uint(inBody2.GetUserData() & 0xff));
+		return e >= 0.0f? e : max(inBody1.GetRestitution(), inBody2.GetRestitution());
+	}
+};
