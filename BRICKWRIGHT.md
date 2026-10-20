@@ -28,8 +28,12 @@ upstream's, unchanged.
    C++ change and rationale: the JoltPhysics fork's `BRICKWRIGHT.md` section 3 (commit `a40ff0b`).
 4. **`MaterialPairs` (1.1.0-bw.3)**, bindings only (`JoltJS.h`): restitution per material PAIR instead of Jolt's
    max(e1, e2). See the JS API below.
-5. Package version `1.1.0-bw.3`; package name stays `jolt-physics`, so `import 'jolt-physics/wasm-compat'` is
-   unchanged. All flavours are built by upstream's `build.sh`.
+5. **`RackMeshConstraint` (1.1.0-bw.4)**: a rack and pinion whose relation holds relative to the frames carrying
+   them (the pinion's hinge, the rack's slider), as `GearMeshConstraint` does for gears; `RackAndPinionConstraint`
+   ties world rates, so a turning or driving frame drove the rack. C++ and rationale: the JoltPhysics fork's
+   `BRICKWRIGHT.md` section 4 (commit `1631b95`).
+6. Package version `1.1.0-bw.4`; package name stays `jolt-physics`, so `import 'jolt-physics/wasm-compat'` is
+   unchanged. All flavours (with the debug builds) are built by upstream's `build.sh`.
 
 Files: `CMakeLists.txt` (FetchContent → fork commit), `JoltJS.idl` / `JoltJS.h` (bindings),
 `brickwright/verify.mjs` (verification scenes), `.github/workflows/brickwright-release.yml`, `package.json`.
@@ -65,6 +69,18 @@ Jolt.MaterialPairs.prototype.sInstall(physicsSystem);     // physicsSystem.SetCo
 // A contact between two bodies with materials and a table entry gets that e; any other pair Jolt's max(e1, e2).
 // sGetRestitution(a, b) (-1: no entry), sClear(). The table is one per module (a C++ combine function has no
 // context), shared by every PhysicsSystem that installs it.
+```
+
+### Rack and pinion relative to the frames (1.1.0-bw.4)
+
+```js
+const s = new Jolt.RackMeshConstraintSettings();       // body 1 the pinion, body 2 the rack (as RackAndPinion)
+s.mSpace = Jolt.EConstraintSpace_WorldSpace;
+s.mHingeAxis = new Jolt.Vec3(...a); s.mSliderAxis = new Jolt.Vec3(...b); s.mRatio = 1 / pitchRadius; // rad per metre
+const rack = Jolt.castObject(s.Create(pinionBody, rackBody), Jolt.RackMeshConstraint);
+physicsSystem.AddConstraint(rack);
+rack.SetConstraints(pinionHinge, rackSlider);  // frames + drift since this call (call again to re-base)
+// GetRatio(), GetPositionError() (rad), GetTotalLambda(); subtype Jolt.EConstraintSubType_RackMesh
 ```
 
 ## Build and release
@@ -156,4 +172,11 @@ nothing without a bouncing multi-body CCD impact or an installed table moves.
 * sha256 `112f6281f8cddaa17927e63b2c9bae77f9f28c8b915ac8aeffac330d75df890c`
 * npm integrity `sha512-xqXPa6PGTgd0I8j4BiAHmmTNQgrXqounlRkpQ7VeVre9/guWR/4SOyJcMynIOzXORE8aHqlw+M9bUhgQwhjjIQ==`
 * Built from `a073cc3` with the JoltPhysics fork at `a40ff0b`.
+
+## Release `v1.1.0-bw.4` (2026-10-20)
+
+Built from `brickwright/gear-mesh-master` with the JoltPhysics fork at `1631b95` (change 5, `RackMeshConstraint`).
+`verify.mjs` adds scene H (a chassis spinning at 3 rad/s or driving at 0.3 m/s: with the pinion held the rack stays put,
+with the pinion turned 2 rad it travels r·θ; the RackAndPinionConstraint control slides 38 mm and -261 mm). Scene E's
+hash is unchanged. The release notes carry the tarball's sha256 and npm integrity.
 

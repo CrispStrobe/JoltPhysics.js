@@ -384,6 +384,57 @@ function sceneMaterialPairs({ install = true, userData = true } = {}) {
     return { install, userData, bounce, lookup: J.MaterialPairs.prototype.sGetRestitution(1, 2) };
 }
 
+/**
+ * H: rack and pinion on a moving frame (fork change 5, RackMeshConstraint). A 200 g chassis carries a pinion (hinge,
+ * axis z) and a rack (slider along x), free in space. The chassis spins about z at 3 rad/s, or drives along x at
+ * 0.3 m/s; the pinion is held to the chassis (hinge friction) or turned by its motor at 2 rad/s relative to it.
+ * RackAndPinionConstraint ties world rates: the chassis's own motion drives the rack. RackMeshConstraint (with the
+ * hinge and slider handed over) ties the rates relative to the chassis: the rack moves only by r times the pinion's turn.
+ */
+function sceneRackOnFrame(kind, mode, { motor = false } = {}) {
+    const w = makeWorld([0, 0, 0]);
+    const chassis = w.body({ pos: [0, 0, 0], mass: 0.2, inertia: [1e-4, 1e-4, 1e-4], layer: L_GHOST });
+    const pinion = w.body({ pos: [0, 0.02, 0], mass: 0.02, inertia: [3e-5, 3e-5, 3e-5], layer: L_GHOST });
+    const rack = w.body({ pos: [0, 0.012, 0], mass: 0.02, inertia: [1e-5, 1e-5, 1e-5], layer: L_GHOST });
+    const hs = new J.HingeConstraintSettings();
+    hs.mSpace = J.EConstraintSpace_WorldSpace;
+    hs.mPoint1 = new J.RVec3(0, 0.02, 0); hs.mPoint2 = new J.RVec3(0, 0.02, 0);
+    hs.mHingeAxis1 = new J.Vec3(0, 0, 1); hs.mHingeAxis2 = new J.Vec3(0, 0, 1);
+    hs.mNormalAxis1 = new J.Vec3(1, 0, 0); hs.mNormalAxis2 = new J.Vec3(1, 0, 0);
+    hs.mMaxFrictionTorque = 10;
+    hs.mMotorSettings.mMinTorqueLimit = -10; hs.mMotorSettings.mMaxTorqueLimit = 10;
+    const hinge = J.castObject(hs.Create(chassis.b, pinion.b), J.HingeConstraint);
+    J.destroy(hs);
+    w.ps.AddConstraint(hinge);
+    if (motor) { hinge.SetMotorState(J.EMotorState_Velocity); hinge.SetTargetAngularVelocity(2); }
+    const ss = new J.SliderConstraintSettings();
+    ss.mAutoDetectPoint = true;
+    ss.mSliderAxis1 = new J.Vec3(1, 0, 0); ss.mSliderAxis2 = new J.Vec3(1, 0, 0);
+    ss.mNormalAxis1 = new J.Vec3(0, 1, 0); ss.mNormalAxis2 = new J.Vec3(0, 1, 0);
+    const slider = J.castObject(ss.Create(chassis.b, rack.b), J.SliderConstraint);
+    J.destroy(ss);
+    w.ps.AddConstraint(slider);
+    const r = 0.008; // pinion pitch radius: 1/r rad per metre
+    if (kind === 'world') {
+        const rs = new J.RackAndPinionConstraintSettings();
+        rs.mSpace = J.EConstraintSpace_WorldSpace; rs.mHingeAxis = new J.Vec3(0, 0, 1); rs.mSliderAxis = new J.Vec3(1, 0, 0); rs.mRatio = 1 / r;
+        w.ps.AddConstraint(rs.Create(pinion.b, rack.b)); J.destroy(rs);
+    } else {
+        const rs = new J.RackMeshConstraintSettings();
+        rs.mSpace = J.EConstraintSpace_WorldSpace; rs.mHingeAxis = new J.Vec3(0, 0, 1); rs.mSliderAxis = new J.Vec3(1, 0, 0); rs.mRatio = 1 / r;
+        const c = J.castObject(rs.Create(pinion.b, rack.b), J.RackMeshConstraint); J.destroy(rs);
+        w.ps.AddConstraint(c);
+        c.SetConstraints(hinge, slider);
+    }
+    const id = chassis.b.GetID();
+    if (mode === 'spin') w.bi.SetAngularVelocity(id, new J.Vec3(0, 0, 3)); else w.bi.SetLinearVelocity(id, new J.Vec3(0.3, 0, 0));
+    for (let i = 0; i < 1 / DT; i++) w.step();
+    const out = { kind, mode, motor, slide: slider.GetCurrentPosition(), pinion: hinge.GetCurrentAngle(), P: w.momentum().P };
+    out.expected = out.pinion * r;
+    w.destroy();
+    return out;
+}
+
 for (const k of kinds) {
     results[k] = {
         discs: sceneDiscs(k),
@@ -395,6 +446,14 @@ for (const k of kinds) {
 }
 if (HAS_MESH) results.mesh.worm = sceneFloating('mesh', true);
 results.regression = sceneRegression();
+results.rackOnFrame = typeof J.RackMeshConstraintSettings === 'function' ? {
+    worldSpin: sceneRackOnFrame('world', 'spin'),
+    worldDrive: sceneRackOnFrame('world', 'drive'),
+    meshSpin: sceneRackOnFrame('mesh', 'spin'),
+    meshDrive: sceneRackOnFrame('mesh', 'drive'),
+    meshSpinMotor: sceneRackOnFrame('mesh', 'spin', { motor: true }),
+    meshDriveMotor: sceneRackOnFrame('mesh', 'drive', { motor: true }),
+} : { skipped: true };
 results.materialPairs = {
     table: sceneMaterialPairs(),
     notInstalled: sceneMaterialPairs({ install: false }),
@@ -431,6 +490,16 @@ if (args.includes('--assert')) {
         ok(Math.abs(m.held.phaseErrDeg2) < 0.5, `mesh: held phase error ${m.held.phaseErrDeg2} deg`);
         ok(Math.abs(m.held.gear1Deg) < 0.5, `mesh: held gear moved ${m.held.gear1Deg} deg`);
         ok(m.worm.relL < 0.01 && near(m.worm.ratio, 1 / 24, 0.02), `mesh: worm L ${m.worm.relL} ratio ${m.worm.ratio}`);
+    }
+    // Fork change 5 (RackMeshConstraint): the rack moves by r times the pinion's turn relative to the chassis, whatever
+    // the chassis does (RackAndPinionConstraint's world rates do not: the controls slide by centimetres).
+    if (typeof J.RackMeshConstraintSettings === 'function') {
+        const k = results.rackOnFrame;
+        for (const c of [k.meshSpin, k.meshDrive, k.meshSpinMotor, k.meshDriveMotor])
+            ok(Math.abs(c.slide - c.expected) < 1e-4, `rackOnFrame mesh ${c.mode}${c.motor ? ' motor' : ''}: slide ${c.slide} m for r·θ ${c.expected}`);
+        ok(Math.abs(k.meshSpinMotor.pinion) > 1 && Math.abs(k.meshDriveMotor.pinion) > 1, 'rackOnFrame: the motor turned the pinion');
+        ok(Math.abs(k.worldSpin.slide - k.worldSpin.expected) > 1e-3 && Math.abs(k.worldDrive.slide - k.worldDrive.expected) > 1e-3,
+            'rackOnFrame: the world-rate control slides (the scene tells them apart)');
     }
     // Fork change 4 (material pairs): the table's e where both bodies have a material and the table is installed.
     if (typeof J.MaterialPairs === 'function') {

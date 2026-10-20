@@ -48,6 +48,7 @@
 #include "Jolt/Physics/Constraints/SixDOFConstraint.h"
 #include "Jolt/Physics/Constraints/GearConstraint.h"
 #include "Jolt/Physics/Constraints/GearMeshConstraint.h"
+#include "Jolt/Physics/Constraints/RackMeshConstraint.h"
 #include "Jolt/Physics/Constraints/RackAndPinionConstraint.h"
 #include "Jolt/Physics/Body/BodyInterface.h"
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
@@ -290,6 +291,7 @@ constexpr EConstraintSubType EConstraintSubType_RackAndPinion = EConstraintSubTy
 constexpr EConstraintSubType EConstraintSubType_Gear = EConstraintSubType::Gear;
 constexpr EConstraintSubType EConstraintSubType_Pulley = EConstraintSubType::Pulley;
 constexpr EConstraintSubType EConstraintSubType_GearMesh = EConstraintSubType::GearMesh;
+constexpr EConstraintSubType EConstraintSubType_RackMesh = EConstraintSubType::RackMesh;
 
 /// Alias for EPathRotationConstraintType to avoid clash
 constexpr EPathRotationConstraintType EPathRotationConstraintType_Free = EPathRotationConstraintType::Free; 

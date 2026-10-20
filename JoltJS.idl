@@ -217,6 +217,7 @@ enum EConstraintSubType {
 	"EConstraintSubType_Gear",
 	"EConstraintSubType_Pulley",
 	"EConstraintSubType_GearMesh",
+	"EConstraintSubType_RackMesh",
 };
 
 enum EMotorState {
@@ -1783,6 +1784,27 @@ interface GearMeshConstraint {
 };
 
 GearMeshConstraint implements TwoBodyConstraint;
+
+// Brickwright fork addition (see BRICKWRIGHT.md): a rack and pinion relative to the frames that carry them
+interface RackMeshConstraintSettings {
+	void RackMeshConstraintSettings();
+
+	attribute EConstraintSpace mSpace;
+	[Value] attribute Vec3 mHingeAxis;
+	[Value] attribute Vec3 mSliderAxis;
+	attribute float mRatio;
+};
+
+RackMeshConstraintSettings implements TwoBodyConstraintSettings;
+
+interface RackMeshConstraint {
+	void SetConstraints([Const] Constraint inPinion, [Const] Constraint inRack);
+	float GetRatio();
+	float GetPositionError();
+	float GetTotalLambda();
+};
+
+RackMeshConstraint implements TwoBodyConstraint;
 
 interface BodyID {
 	void BodyID();
