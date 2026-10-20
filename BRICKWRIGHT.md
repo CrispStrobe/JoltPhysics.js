@@ -148,6 +148,12 @@ Built from `brickwright/gear-mesh-master` with the JoltPhysics fork at `a40ff0b`
 (change 4). `verify.mjs` adds scene F (a bounce across two beams: the bounce is e·v and the rebound e²·h, also off two
 loose beams, where upstream gives 0.96·e·v and 4 % instead of 16 %) and scene G (material pairs: the table's 0.07
 where both bodies have a material, Jolt's max 0.4 otherwise). Scene E's hash (`f7b0121879392938`) is unchanged:
-nothing without a bouncing multi-body CCD impact or an installed table moves. Release notes carry the tarball's
-sha256 and npm integrity.
+nothing without a bouncing multi-body CCD impact or an installed table moves.
+
+* Release: <https://github.com/CrispStrobe/JoltPhysics.js/releases/tag/v1.1.0-bw.3> (workflow run 39427519957; the
+  branch run 39422167908 before the tag produced the same bytes)
+* Tarball: `https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.3/jolt-physics-1.1.0-bw.3.tgz`
+* sha256 `112f6281f8cddaa17927e63b2c9bae77f9f28c8b915ac8aeffac330d75df890c`
+* npm integrity `sha512-xqXPa6PGTgd0I8j4BiAHmmTNQgrXqounlRkpQ7VeVre9/guWR/4SOyJcMynIOzXORE8aHqlw+M9bUhgQwhjjIQ==`
+* Built from `a073cc3` with the JoltPhysics fork at `a40ff0b`.
 
