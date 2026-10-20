@@ -385,6 +385,44 @@ function sceneMaterialPairs({ install = true, userData = true } = {}) {
 }
 
 /**
+ * I: collision filtered part by part in C++ (fork change 6, PartPairSimShapeFilter). Two free bodies of two boxes each
+ * (parts 0 and 1, colliders 0 and 1: the leaves' user data); their part-0 boxes overlap by 2 mm, their part-1 boxes are
+ * apart. Unfiltered, the overlap pushes the bodies apart; with part pair (0, 0) kept apart they stay; with a collide
+ * list naming only (1, 1), (0, 0) is kept apart too; a collide list naming (0, 0) lets it push again.
+ */
+function scenePartPairFilter(mode) {
+    if (typeof J.PartPairSimShapeFilter !== 'function') return { skipped: true };
+    const w = makeWorld([0, 0, 0]);
+    const compound = () => {
+        const cs = new J.StaticCompoundShapeSettings();
+        for (const [i, x] of [[0, 0], [1, 0.1]]) {
+            const box = new J.BoxShapeSettings(new J.Vec3(0.01, 0.01, 0.01), 0.001);
+            box.mUserData = i;
+            cs.AddShape(new J.Vec3(x, 0, 0), new J.Quat(0, 0, 0, 1), box, i);
+        }
+        const shape = cs.Create().Get();
+        return shape;
+    };
+    const a = w.body({ pos: [0, 0, 0], layer: L_MOVING, shape: compound() });
+    const b = w.body({ pos: [0, 0.018, 0], layer: L_MOVING, shape: compound() });
+    let filter = null;
+    if (mode !== 'none') {
+        filter = new J.PartPairSimShapeFilter();
+        for (const e of [a, b]) for (const i of [0, 1]) filter.SetColliderPart(e.b.GetID(), i, i);
+        filter.AddBodyPair(a.b.GetID(), b.b.GetID(), mode !== 'apart');
+        if (mode === 'apart') filter.AddPartPair(a.b.GetID(), b.b.GetID(), 0, 0);
+        if (mode === 'collideOther') filter.AddPartPair(b.b.GetID(), a.b.GetID(), 1, 1);
+        if (mode === 'collideThis') filter.AddPartPair(b.b.GetID(), a.b.GetID(), 0, 0);
+        w.ps.SetSimShapeFilter(filter);
+    }
+    for (let i = 0; i < 30; i++) w.step();
+    const gap = v3(b.b.GetPosition())[1] - v3(a.b.GetPosition())[1];
+    w.destroy();
+    if (filter) J.destroy(filter);
+    return { mode, gap, pushed: gap > 0.0185 };
+}
+
+/**
  * H: rack and pinion on a moving frame (fork change 5, RackMeshConstraint). A 200 g chassis carries a pinion (hinge,
  * axis z) and a rack (slider along x), free in space. The chassis spins about z at 3 rad/s, or drives along x at
  * 0.3 m/s; the pinion is held to the chassis (hinge friction) or turned by its motor at 2 rad/s relative to it.
@@ -454,6 +492,12 @@ results.rackOnFrame = typeof J.RackMeshConstraintSettings === 'function' ? {
     meshSpinMotor: sceneRackOnFrame('mesh', 'spin', { motor: true }),
     meshDriveMotor: sceneRackOnFrame('mesh', 'drive', { motor: true }),
 } : { skipped: true };
+results.partPairFilter = {
+    none: scenePartPairFilter('none'),
+    apart: scenePartPairFilter('apart'),
+    collideOther: scenePartPairFilter('collideOther'),
+    collideThis: scenePartPairFilter('collideThis'),
+};
 results.materialPairs = {
     table: sceneMaterialPairs(),
     notInstalled: sceneMaterialPairs({ install: false }),
@@ -500,6 +544,14 @@ if (args.includes('--assert')) {
         ok(Math.abs(k.meshSpinMotor.pinion) > 1 && Math.abs(k.meshDriveMotor.pinion) > 1, 'rackOnFrame: the motor turned the pinion');
         ok(Math.abs(k.worldSpin.slide - k.worldSpin.expected) > 1e-3 && Math.abs(k.worldDrive.slide - k.worldDrive.expected) > 1e-3,
             'rackOnFrame: the world-rate control slides (the scene tells them apart)');
+    }
+    // Fork change 6 (PartPairSimShapeFilter): the listed part pair is kept apart, or only the listed pairs collide.
+    if (typeof J.PartPairSimShapeFilter === 'function') {
+        const f = results.partPairFilter;
+        ok(f.none.pushed, `partPairFilter: unfiltered, the overlapping boxes pushed apart (gap ${f.none.gap})`);
+        ok(!f.apart.pushed, `partPairFilter: pair (0, 0) kept apart, yet gap ${f.apart.gap}`);
+        ok(!f.collideOther.pushed, `partPairFilter: collide list (1, 1) only, yet (0, 0) pushed (gap ${f.collideOther.gap})`);
+        ok(f.collideThis.pushed, `partPairFilter: collide list (0, 0), yet no push (gap ${f.collideThis.gap})`);
     }
     // Fork change 4 (material pairs): the table's e where both bodies have a material and the table is installed.
     if (typeof J.MaterialPairs === 'function') {

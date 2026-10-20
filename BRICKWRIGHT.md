@@ -32,13 +32,33 @@ upstream's, unchanged.
    them (the pinion's hinge, the rack's slider), as `GearMeshConstraint` does for gears; `RackAndPinionConstraint`
    ties world rates, so a turning or driving frame drove the rack. C++ and rationale: the JoltPhysics fork's
    `BRICKWRIGHT.md` section 4 (commit `1631b95`).
-6. Package version `1.1.0-bw.4`; package name stays `jolt-physics`, so `import 'jolt-physics/wasm-compat'` is
+6. **`PartPairSimShapeFilter` (1.1.0-bw.5)**, bindings only (`JoltJS.h`): collision filtered part by part between two
+   bodies, in C++. Brickwright's Robot Lab keeps apart the parts of two jointed bodies that sit in or round each other
+   (a pin in its hole) while the rest of the two bodies collides. That filter was a `SimShapeFilterJS`: a call into
+   JavaScript for every sub-shape pair of every body pair in the narrow phase (5–12 % of a step on big models), and
+   impossible with the multithreaded builds, where Jolt calls the filter from its worker threads and the JS object does
+   not exist there. Each collider is a leaf shape whose user data is its index (`ShapeSettings.mUserData`);
+   `SetColliderPart` maps it to a part; `AddBodyPair` + `AddPartPair` list part pairs kept apart, or with
+   `inCollideList` the only pairs that collide. Read only during `Update`: thread safe. Verification scene I in
+   `brickwright/verify.mjs`.
+7. Package version `1.1.0-bw.5`; package name stays `jolt-physics`, so `import 'jolt-physics/wasm-compat'` is
    unchanged. All flavours (with the debug builds) are built by upstream's `build.sh`.
 
 Files: `CMakeLists.txt` (FetchContent → fork commit), `JoltJS.idl` / `JoltJS.h` (bindings),
 `brickwright/verify.mjs` (verification scenes), `.github/workflows/brickwright-release.yml`, `package.json`.
 
 ## JS API
+
+```js
+// Part-pair filter (1.1.0-bw.5): leaves carry their collider index as user data
+const box = new Jolt.BoxShapeSettings(new Jolt.Vec3(0.01, 0.01, 0.01), 0.001); box.mUserData = colliderIndex;
+compoundSettings.AddShape(position, rotation, box, colliderIndex);
+const filter = new Jolt.PartPairSimShapeFilter();
+filter.SetColliderPart(bodyId, colliderIndex, partNumber);         // per collider of each filtered body
+filter.AddBodyPair(bodyA, bodyB, false);                           // false: list the pairs kept apart; true: the pairs that collide
+filter.AddPartPair(bodyA, bodyB, partOfA, partOfB);
+physicsSystem.SetSimShapeFilter(filter);                           // keep `filter` alive while the system uses it
+```
 
 ```js
 const s = new Jolt.GearMeshConstraintSettings();

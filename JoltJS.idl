@@ -2097,6 +2097,17 @@ interface MaterialPairs {
 	static void sInstall(PhysicsSystem inSystem);
 };
 
+// Brickwright fork: collision filtered part by part between two bodies, in C++ (JoltJS.h PartPairSimShapeFilter; BRICKWRIGHT.md)
+interface PartPairSimShapeFilter {
+	void PartPairSimShapeFilter();
+	void SetColliderPart([Const, Ref] BodyID inBody, unsigned long inCollider, unsigned long inPart);
+	void AddBodyPair([Const, Ref] BodyID inBody1, [Const, Ref] BodyID inBody2, boolean inCollideList);
+	void AddPartPair([Const, Ref] BodyID inBody1, [Const, Ref] BodyID inBody2, unsigned long inPart1, unsigned long inPart2);
+	void Clear();
+};
+
+PartPairSimShapeFilter implements SimShapeFilter;
+
 interface StateRecorderEm {
 };
 
