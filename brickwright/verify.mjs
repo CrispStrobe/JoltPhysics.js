@@ -386,17 +386,18 @@ function sceneMaterialPairs({ install = true, userData = true } = {}) {
 
 /**
  * I: collision filtered part by part in C++ (fork change 6, PartPairSimShapeFilter). Two free bodies of two boxes each
- * (parts 0 and 1, colliders 0 and 1: the leaves' user data); their part-0 boxes overlap by 2 mm, their part-1 boxes are
+ * (parts 0 and 1, colliders 0 and 1: the leaves' user data); their part-0 boxes overlap by 40 mm (beyond Jolt's 20 mm
+ * default penetration slop), their part-1 boxes are
  * apart. Unfiltered, the overlap pushes the bodies apart; with part pair (0, 0) kept apart they stay; with a collide
  * list naming only (1, 1), (0, 0) is kept apart too; a collide list naming (0, 0) lets it push again.
  */
 function scenePartPairFilter(mode) {
-    if (typeof J.PartPairSimShapeFilter !== 'function') return { skipped: true };
+    if (typeof J.PartPairSimShapeFilter !== 'function' && mode !== 'none') return { skipped: true };
     const w = makeWorld([0, 0, 0]);
     const compound = () => {
         const cs = new J.StaticCompoundShapeSettings();
-        for (const [i, x] of [[0, 0], [1, 0.1]]) {
-            const box = new J.BoxShapeSettings(new J.Vec3(0.01, 0.01, 0.01), 0.001);
+        for (const [i, x] of [[0, 0], [1, 0.4]]) {
+            const box = new J.BoxShapeSettings(new J.Vec3(0.05, 0.05, 0.05), 0.001);
             box.mUserData = i;
             cs.AddShape(new J.Vec3(x, 0, 0), new J.Quat(0, 0, 0, 1), box, i);
         }
@@ -404,7 +405,7 @@ function scenePartPairFilter(mode) {
         return shape;
     };
     const a = w.body({ pos: [0, 0, 0], layer: L_MOVING, shape: compound() });
-    const b = w.body({ pos: [0, 0.018, 0], layer: L_MOVING, shape: compound() });
+    const b = w.body({ pos: [0, 0.06, 0], layer: L_MOVING, shape: compound() });
     let filter = null;
     if (mode !== 'none') {
         filter = new J.PartPairSimShapeFilter();
@@ -419,7 +420,7 @@ function scenePartPairFilter(mode) {
     const gap = v3(b.b.GetPosition())[1] - v3(a.b.GetPosition())[1];
     w.destroy();
     if (filter) J.destroy(filter);
-    return { mode, gap, pushed: gap > 0.0185 };
+    return { mode, gap, pushed: gap > 0.065 };
 }
 
 /**
