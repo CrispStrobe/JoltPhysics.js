@@ -13,8 +13,9 @@ Go to the [demos page](https://jrouwe.github.io/JoltPhysics.js/) to see the proj
 
 ## Using
 
-This library comes in 7 flavours:
+This library comes in 8 flavours:
 - `wasm-compat` - A WASM version with the WASM file (encoded in base64) embedded in the bundle
+- `wasm-simd-compat` - Optional single-thread WASM SIMD, embedded like `wasm-compat`; requires SIMD support, no SharedArrayBuffer or cross-origin isolation. Keep `wasm-compat` as a fallback for older engines.
 - `debug-wasm-compat` - Same as `wasm-compat` but with debug checking enabled (outputs errors to the console and enables the debug renderer).
 - `wasm` - A WASM version with a separate WASM file
 - `asm` - A JavaScript version that uses [asm.js](https://developer.mozilla.org/en-US/docs/Games/Tools/asm.js)
