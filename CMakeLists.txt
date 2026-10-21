@@ -77,7 +77,11 @@ if (ENABLE_MULTI_THREADING)
 else()
 	set(MULTI_THREADED_FLAG "")
 	set(ENVIRONMENT_FLAG -s ENVIRONMENT=web,node,worker)
-	set(OUTPUT_BASE_NAME "${OUTPUT_FOLDER}jolt-physics")
+	if (ENABLE_SIMD)
+		set(OUTPUT_BASE_NAME "${OUTPUT_FOLDER}jolt-physics.simd")
+	else()
+		set(OUTPUT_BASE_NAME "${OUTPUT_FOLDER}jolt-physics")
+	endif()
 	# Tried to keep this multi-platform since windows/mac/linux all treat -i different,
 	# though this creates extra backup file in a non-tracked folder.
 	# Removing 'thread_local' from the generated binding code fixes a small 'residual' allocation

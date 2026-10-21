@@ -200,3 +200,19 @@ Built from `brickwright/gear-mesh-master` with the JoltPhysics fork at `1631b95`
 with the pinion turned 2 rad it travels r·θ; the RackAndPinionConstraint control slides 38 mm and -261 mm). Scene E's
 hash is unchanged. The release notes carry the tarball's sha256 and npm integrity.
 
+
+
+## Optional single-thread SIMD (1.1.0-bw.6)
+
+`jolt-physics/wasm-simd-compat` adds a SIMD build of the same C++ source and
+bindings without shared memory or pthreads. Baseline `wasm-compat` and all
+multithread exports retain their names and build settings. A consumer must
+select this optional flavor only on a SIMD-capable engine and retain baseline
+fallback; this package does not change consumer selection automatically.
+
+Qualification runs every original physical scene against both flavors and
+requires the exact same non-gear regression hash. Browser measurements of the
+same downloaded magnetic-chess mechanism showed approximately 2.06x faster
+physics in WebKit and 1.77x in Chrome, with identical final body poses after
+six simulated seconds. These are isolated physics measurements, not a claim
+that every full application or moving program runs twice as fast.

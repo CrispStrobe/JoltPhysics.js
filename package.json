@@ -1,6 +1,6 @@
 {
 	"name": "jolt-physics",
-	"version": "1.1.0-bw.5",
+	"version": "1.1.0-bw.6",
 	"description": "A WebAssembly port of JoltPhysics, a rigid body physics and collision detection library, suitable for games and VR applications",
 	"type": "module",
 	"main": "dist/jolt-physics.wasm-compat.js",
@@ -40,7 +40,11 @@
 		},
 		"./jolt-physics.wasm.wasm": "./dist/jolt-physics.wasm.wasm",
 		"./jolt-physics.multithread.wasm.wasm": "./dist/jolt-physics.multithread.wasm.wasm",
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./wasm-simd-compat": {
+			"types": "./dist/jolt-physics.simd.wasm-compat.d.ts",
+			"default": "./dist/jolt-physics.simd.wasm-compat.js"
+		}
 	},
 	"scripts": {
 		"build": "sh build.sh",
@@ -76,7 +80,9 @@
 		"debug-wasm-compat",
 		"wasm-multithread",
 		"wasm-compat-multithread",
-		"debug-wasm-compat-multithread"
+		"debug-wasm-compat-multithread",
+		"./dist/jolt-physics.simd.wasm-compat.js",
+		"./dist/jolt-physics.simd.wasm-compat.d.ts"
 	],
 	"keywords": [
 		"physics",

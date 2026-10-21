@@ -37,6 +37,11 @@ then
 	cp ./dist/jolt-physics.multithread.wasm-compat.js ./dist/jolt-physics.debug.multithread.wasm-compat.js
 fi
 
+# Optional single-thread SIMD: no shared memory or cross-origin isolation.
+# Keep the existing scalar and multithread artifacts at their original names.
+cmake -B Build/$BUILD_TYPE/ST-SIMD -DENABLE_MULTI_THREADING=OFF -DENABLE_SIMD=ON -DBUILD_WASM_COMPAT_ONLY=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE "${@}"
+cmake --build Build/$BUILD_TYPE/ST-SIMD -j`nproc`
+
 # Update the worker URL in the copied wasm-compat.js files
 sed -i "s:jolt-physics.multithread.wasm-compat.js:jolt-physics.debug.multithread.wasm-compat.js:g" ./dist/jolt-physics.debug.multithread.wasm-compat.js
 
@@ -50,6 +55,7 @@ EOF
 
 cp ./dist/jolt-physics.d.ts ./dist/jolt-physics.wasm.d.ts
 cp ./dist/jolt-physics.d.ts ./dist/jolt-physics.wasm-compat.d.ts
+cp ./dist/jolt-physics.d.ts ./dist/jolt-physics.simd.wasm-compat.d.ts
 cp ./dist/jolt-physics.d.ts ./dist/jolt-physics.debug.wasm-compat.d.ts
 cp ./dist/jolt-physics.d.ts ./dist/jolt-physics.multithread.d.ts
 cp ./dist/jolt-physics.d.ts ./dist/jolt-physics.multithread.wasm.d.ts
