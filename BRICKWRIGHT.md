@@ -216,3 +216,22 @@ same downloaded magnetic-chess mechanism showed approximately 2.06x faster
 physics in WebKit and 1.77x in Chrome, with identical final body poses after
 six simulated seconds. These are isolated physics measurements, not a claim
 that every full application or moving program runs twice as fast.
+
+## Retained distance-constraint impulse observation (1.1.0-bw.7 candidate)
+
+The pinned C++ producer adds `DistanceConstraint.GetLastVelocityImpulse()`.
+It retains the signed final velocity-solver impulse across position correction,
+which can deactivate a unilateral limit and clear the existing live lambda.
+The original getter, solver equations, warm starting and serialized solver state
+are unchanged. The retained observation is cleared by setup/reset/restore;
+sleeping constraints retain their last solve, and multiple collision substeps
+are not summed. Consumers need a fresh active native step and its actual dt.
+
+`brickwright/verify-distance-impulse.mjs` observes every 5 ms native step of a
+four-rope suspension, checking gravity/drag/rope momentum balance and weight
+support. The previous immutable bw.6 package is an explicit failing-readout
+control. Both scalar and SIMD builds must preserve every actual body position,
+rotation and velocity from their respective previous-package controls exactly.
+The packed tarball repeats these checks, alongside all original gear, collision,
+rack and regression-hash controls. No app dependency advances before the
+producer, binding build, package and current app qualification pass.
