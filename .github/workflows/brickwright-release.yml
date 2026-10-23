@@ -34,6 +34,20 @@ jobs:
       shell: bash
       run: node brickwright/verify-simd.mjs
 
+    - name: Verify native rope impulses and unchanged trajectories
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p /tmp/previous-rope-engine
+        curl -fL --retry 2 https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.6/jolt-physics-1.1.0-bw.6.tgz -o /tmp/previous-rope-engine/engine.tgz
+        actual="sha512-$(openssl dgst -sha512 -binary /tmp/previous-rope-engine/engine.tgz | base64 -w0)"
+        test "$actual" = 'sha512-n6G3uxIdjzw1P/wZn2/DrPJaFXX7oTMztQ7IvGAChaQw4C4CLWXwWEWEbF0/PwSCID6xSfJya5Tlc9js8TFskg=='
+        tar xzf /tmp/previous-rope-engine/engine.tgz -C /tmp/previous-rope-engine
+        for flavor in wasm-compat simd.wasm-compat; do
+          node brickwright/verify-distance-impulse.mjs /tmp/previous-rope-engine/package/dist/jolt-physics.$flavor.js --legacy --out=/tmp/previous-rope-engine/$flavor.json
+          node brickwright/verify-distance-impulse.mjs dist/jolt-physics.$flavor.js --reference=/tmp/previous-rope-engine/$flavor.json
+        done
+
     - name: Pack
       id: pack
       shell: bash
@@ -50,6 +64,8 @@ jobs:
         mkdir -p /tmp/packed && tar xzf "$TGZ" -C /tmp/packed
         node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --assert
         node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --assert
+        node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --reference=/tmp/previous-rope-engine/wasm-compat.json
+        node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --reference=/tmp/previous-rope-engine/simd.wasm-compat.json
 
     - name: Upload package
       uses: actions/upload-artifact@v4

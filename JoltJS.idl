@@ -1374,6 +1374,7 @@ interface DistanceConstraint {
 	[Ref] SpringSettings GetLimitsSpringSettings();
 	void SetLimitsSpringSettings([Const, Ref] SpringSettings inSettings);
 	float GetTotalLambdaPosition();
+	float GetLastVelocityImpulse();
 };
 
 DistanceConstraint implements TwoBodyConstraint;
