@@ -34,6 +34,14 @@ jobs:
       shell: bash
       run: node brickwright/verify-simd.mjs
 
+    - name: Verify relative rotor native API and constraints (built scalar and SIMD)
+      shell: bash
+      run: |
+        set -euo pipefail
+        for flavor in wasm-compat simd.wasm-compat; do
+          node brickwright/verify-rotor-inertia.mjs dist/jolt-physics.$flavor.js
+        done
+
     - name: Verify native rope impulses and unchanged trajectories
       shell: bash
       run: |
@@ -64,6 +72,8 @@ jobs:
         mkdir -p /tmp/packed && tar xzf "$TGZ" -C /tmp/packed
         node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --assert
         node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --assert
+        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js
+        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js
         node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --reference=/tmp/previous-rope-engine/wasm-compat.json
         node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --reference=/tmp/previous-rope-engine/simd.wasm-compat.json
 

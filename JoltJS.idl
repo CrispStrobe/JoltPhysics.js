@@ -1413,6 +1413,7 @@ interface HingeConstraintSettings {
 	attribute float mLimitsMax;
 	[Value] attribute SpringSettings mLimitsSpringSettings;
 	attribute float mMaxFrictionTorque;
+	attribute float mReflectedRotorInertia;
 	[Value] attribute MotorSettings mMotorSettings;
 };
 
@@ -1446,6 +1447,10 @@ interface HingeConstraint {
 	[Value] Vector2 GetTotalLambdaRotation();
 	float GetTotalLambdaRotationLimits();
 	float GetTotalLambdaMotor();
+	boolean SetReflectedRotorInertia(float inInertia);
+	float GetReflectedRotorInertia();
+	float GetRotorAngularVelocity();
+	float GetTotalLambdaRotor();
 };
 
 HingeConstraint implements TwoBodyConstraint;

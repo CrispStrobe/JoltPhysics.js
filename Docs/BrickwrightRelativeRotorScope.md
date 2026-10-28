@@ -1,6 +1,6 @@
 # Brickwright relative rotor inertia: bindings and package scope
 
-Status: CLAIMED — documentation only; merge before implementation.
+Status: BINDING SOURCE CANDIDATE — merged scope; native pin and qualification pending.
 Owner: Codex, authorized Robot Lab physics continuation.
 Integration target: `brickwright/part-pair-filter` at
 `24ffd097599060f52b42f89239aba40ce902a5b4`. Its complete source tree equals
@@ -33,3 +33,9 @@ exact-head check must succeed, only declared skips, before normal matched-head
 merge with parent/tree verification. A final library package release and Lite
 pin adoption require the qualified native and packed results, not this claim.
 No material calibration, hardware, reference-firmware or physical-accuracy claim.
+
+The source successor adds only the agreed hinge IDL rows, a focused verifier,
+built/packed scalar/SIMD verification steps and explanatory documentation. The
+native pin remains the qualified bw.7 revision until a newly qualified landed
+native SHA is explicitly supplied. This source checkpoint has syntax review
+only; no runtime, packed-package or combined-build result is inferred.
