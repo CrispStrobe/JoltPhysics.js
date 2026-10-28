@@ -1,0 +1,111 @@
+# Brickwright fork (see BRICKWRIGHT.md): build the npm package against the JoltPhysics fork commit pinned in
+# CMakeLists.txt, run the gear verification scenes, and attach `npm pack` output (+ sha256 / sha512 integrity)
+# to a GitHub Release when a tag v*-bw.* is pushed. Upstream's build-and-deploy.yml only runs on main.
+name: Brickwright build and release
+
+on:
+  push:
+    branches: [ 'brickwright/**' ]
+    tags: [ 'v*-bw.*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the release with the default token
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+
+    - name: Build (upstream script, emsdk version from ci/install-emsdk.sh)
+      run: ./ci/build-examples.sh
+      shell: bash
+
+    - name: Verify gear scenes (fork)
+      shell: bash
+      run: node brickwright/verify-simd.mjs
+
+    - name: Verify native rope impulses and unchanged trajectories
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p /tmp/previous-rope-engine
+        curl -fL --retry 2 https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.6/jolt-physics-1.1.0-bw.6.tgz -o /tmp/previous-rope-engine/engine.tgz
+        actual="sha512-$(openssl dgst -sha512 -binary /tmp/previous-rope-engine/engine.tgz | base64 -w0)"
+        test "$actual" = 'sha512-n6G3uxIdjzw1P/wZn2/DrPJaFXX7oTMztQ7IvGAChaQw4C4CLWXwWEWEbF0/PwSCID6xSfJya5Tlc9js8TFskg=='
+        tar xzf /tmp/previous-rope-engine/engine.tgz -C /tmp/previous-rope-engine
+        for flavor in wasm-compat simd.wasm-compat; do
+          node brickwright/verify-distance-impulse.mjs /tmp/previous-rope-engine/package/dist/jolt-physics.$flavor.js --legacy --out=/tmp/previous-rope-engine/$flavor.json
+          node brickwright/verify-distance-impulse.mjs dist/jolt-physics.$flavor.js --reference=/tmp/previous-rope-engine/$flavor.json
+        done
+
+    - name: Pack
+      id: pack
+      shell: bash
+      run: |
+        set -e
+        TGZ=$(npm pack --silent | tail -1)
+        sha256sum "$TGZ" > "$TGZ.sha256"
+        INTEGRITY="sha512-$(openssl dgst -sha512 -binary "$TGZ" | base64 -w0)"
+        echo "$INTEGRITY" > "$TGZ.integrity"
+        cat "$TGZ.sha256" "$TGZ.integrity"
+        echo "tgz=$TGZ" >> "$GITHUB_OUTPUT"
+        echo "integrity=$INTEGRITY" >> "$GITHUB_OUTPUT"
+        # The smoke test again on the packed package itself
+        mkdir -p /tmp/packed && tar xzf "$TGZ" -C /tmp/packed
+        node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --assert
+        node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --assert
+        node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --reference=/tmp/previous-rope-engine/wasm-compat.json
+        node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --reference=/tmp/previous-rope-engine/simd.wasm-compat.json
+
+    - name: Upload package
+      uses: actions/upload-artifact@v4
+      with:
+        name: jolt-physics-package
+        path: |
+          ${{ steps.pack.outputs.tgz }}
+          ${{ steps.pack.outputs.tgz }}.sha256
+          ${{ steps.pack.outputs.tgz }}.integrity
+
+    - name: Non-gear regression hash (expected = plain upstream master control, 1.1.0 printed for reference)
+      shell: bash
+      run: |
+        set -e
+        mkdir -p /tmp/base && (cd /tmp/base && npm pack jolt-physics@1.1.0 --silent && tar xzf jolt-physics-1.1.0.tgz)
+        node brickwright/verify.mjs /tmp/base/package/dist/jolt-physics.wasm-compat.js
+        node brickwright/verify.mjs dist/jolt-physics.wasm-compat.js --json > /tmp/fork.json
+        node brickwright/verify.mjs /tmp/base/package/dist/jolt-physics.wasm-compat.js --json > /tmp/base.json
+        cat /tmp/fork.json; echo; cat /tmp/base.json; echo
+        node -e '
+          const f = require("/tmp/fork.json").results.regression, b = require("/tmp/base.json").results.regression;
+          // Expected value is the plain upstream master 01adafb build without the gear commits
+          // (branch brickwright/plain-master-control, run 39223975871). It differs from 1.1.0 (582ce7fb0bd82275)
+          // because of upstream non-gear changes since v5.6.0, not because of the gear commits.
+          const expected = "f7b0121879392938";
+          console.log("regression fork", f.hash, "expected (plain master)", expected, "1.1.0", b.hash);
+          if (f.hash !== expected) { console.error("non-gear physics differs from plain master"); process.exit(1); }'
+
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        TGZ='${{ steps.pack.outputs.tgz }}'
+        cat > notes.md <<NOTES
+        jolt-physics ${GITHUB_REF_NAME#v} - Brickwright fork build (GearConstraint ratio fix + GearMeshConstraint). See BRICKWRIGHT.md.
+
+        - sha256: \`$(cut -d' ' -f1 "$TGZ.sha256")\`
+        - integrity: \`${{ steps.pack.outputs.integrity }}\`
+        - built from ${GITHUB_SHA} (JoltPhysics fork commit pinned in CMakeLists.txt)
+        NOTES
+        gh release create "$GITHUB_REF_NAME" "$TGZ" "$TGZ.sha256" "$TGZ.integrity" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes-file notes.md --target "$GITHUB_SHA"
