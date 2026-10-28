@@ -35,11 +35,12 @@ jobs:
       run: node brickwright/verify-simd.mjs
 
     - name: Verify relative rotor native API and constraints (built scalar and SIMD)
+      id: rotor_built
       shell: bash
       run: |
         set -euo pipefail
         for flavor in wasm-compat simd.wasm-compat; do
-          node brickwright/verify-rotor-inertia.mjs dist/jolt-physics.$flavor.js
+          node brickwright/verify-rotor-inertia.mjs dist/jolt-physics.$flavor.js --phase=built --flavor=$flavor --out=rotor-$flavor-built.json
         done
 
     - name: Verify native rope impulses and unchanged trajectories
@@ -72,8 +73,8 @@ jobs:
         mkdir -p /tmp/packed && tar xzf "$TGZ" -C /tmp/packed
         node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --assert
         node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --assert
-        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js
-        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js
+        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --phase=packed --flavor=wasm-compat --package="$TGZ" --out=rotor-wasm-compat-packed.json
+        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --phase=packed --flavor=simd.wasm-compat --package="$TGZ" --out=rotor-simd.wasm-compat-packed.json
         node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --reference=/tmp/previous-rope-engine/wasm-compat.json
         node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --reference=/tmp/previous-rope-engine/simd.wasm-compat.json
 
@@ -85,6 +86,14 @@ jobs:
           ${{ steps.pack.outputs.tgz }}
           ${{ steps.pack.outputs.tgz }}.sha256
           ${{ steps.pack.outputs.tgz }}.integrity
+
+    - name: Retain relative rotor observations (including first diagnostic failure)
+      if: always() && steps.rotor_built.outcome != 'skipped'
+      uses: actions/upload-artifact@v4
+      with:
+        name: relative-rotor-observations
+        path: rotor-*.json
+        if-no-files-found: warn
 
     - name: Non-gear regression hash (expected = plain upstream master control, 1.1.0 printed for reference)
       shell: bash

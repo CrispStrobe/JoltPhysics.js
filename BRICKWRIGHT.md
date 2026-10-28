@@ -265,6 +265,20 @@ Body masses and inertia tensors must remain unchanged. The existing release
 workflow checks built and packed scalar/SIMD modules, retaining every existing
 gear/rope/filter and regression-hash guard.
 
+Each consumer writes a distinct `bw.relative-rotor.trace.v2` JSON observation
+with at most 200 single-step samples per case. Initial body/hinge parameters,
+actual before/after poses, rates, inertia, native scalar/impulses and commands
+allow separate analytic and constraint auditing. Configuration and recorder
+boundaries are explicit events. Neighboring-joint cases include paired Jr0
+baselines; restore cases retain genuinely different intervening configurations.
+Actual checkout/event/native identities, verifier/module/archive hashes, Node
+and package versions, phase and flavor distinguish all four consumers. These
+claims require independent CI/source/package admission; self-reported expected
+values and booleans are not sufficient evidence. The separate observations
+artifact retains partial first-failure traces marked `complete:false`; these
+are diagnostics and cannot qualify a consumer. Existing package artifacts and
+hash guards retain their original contents.
+
 This checkpoint deliberately retains native pin
 `84f66c4dd4cb18f4c7be1bfdedb3d9f6d86ac5ff`, package version and toolchain pins.
 That native revision does not yet implement this API: this binding checkpoint
