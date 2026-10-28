@@ -239,11 +239,14 @@ for(const shared of [false,true]) for(const zeroBaseline of [true,false]) scene(
     w.motor(first);if(shared)w.motor(second,-1);
     const initial=w.tensorIdentity();let maxPointSpeed=0,maxLockedRate=0,maxPointGap=0;
     for(let n=0;n<80;n++) {
+        const pre=w.state(); // Native velocity Jacobians are cached before pose integration.
         w.step();assert.ok(norm(w.momentum())<3e-6,'bare multibody angular momentum');
         for(const {h,a,b,axis} of w.hinges) {
-            const qa=quat(a.b.GetRotation()),qb=quat(b.b.GetRotation());
+            const qa=pre.bodies.find(body=>body.id===a.id).rotation,qb=pre.bodies.find(body=>body.id===b.id).rotation;
             const ra=rotate(qa,xyz(h.GetLocalSpacePoint1())),rb=rotate(qb,xyz(h.GetLocalSpacePoint2()));
-            const pa=add(xyz(a.b.GetCenterOfMassPosition()),ra),pb=add(xyz(b.b.GetCenterOfMassPosition()),rb);
+            // Geometric gaps are POST-state quantities; Cdot uses PRE arms with solved velocities.
+            const pa=add(xyz(a.b.GetCenterOfMassPosition()),rotate(quat(a.b.GetRotation()),xyz(h.GetLocalSpacePoint1())));
+            const pb=add(xyz(b.b.GetCenterOfMassPosition()),rotate(quat(b.b.GetRotation()),xyz(h.GetLocalSpacePoint2())));
             const va=add(xyz(a.b.GetLinearVelocity()),cross(xyz(a.b.GetAngularVelocity()),ra));
             const vb=add(xyz(b.b.GetLinearVelocity()),cross(xyz(b.b.GetAngularVelocity()),rb));
             maxPointSpeed=Math.max(maxPointSpeed,norm(sub(vb,va)));maxPointGap=Math.max(maxPointGap,norm(sub(pb,pa)));

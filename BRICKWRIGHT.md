@@ -291,6 +291,11 @@ than an implicit per-step reset. Energy/work checks apply to the active,
 constant-inertia intervals, not across configuration changes or every possible
 external API lifetime.
 
+Velocity-constraint residuals use the native solve's pre-integration hinge axes
+and anchor arms with solved velocities. Geometric gaps, body momentum and energy
+use the actual post-step pose. Evaluating the solved Jacobian at the later pose
+would conflate integration/frame drift with a velocity-constraint violation.
+
 This checkpoint deliberately retains native pin
 `84f66c4dd4cb18f4c7be1bfdedb3d9f6d86ac5ff`, package version and toolchain pins.
 That native revision does not yet implement this API: this binding checkpoint
