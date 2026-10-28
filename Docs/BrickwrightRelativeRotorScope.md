@@ -1,6 +1,6 @@
 # Brickwright relative rotor inertia: bindings and package scope
 
-Status: CLAIMED — documentation only; merge before implementation.
+Status: PACKAGE QUALIFICATION CANDIDATE — native source qualified; packed results pending.
 Owner: Codex, authorized Robot Lab physics continuation.
 Integration target: `brickwright/part-pair-filter` at
 `24ffd097599060f52b42f89239aba40ce902a5b4`. Its complete source tree equals
@@ -33,3 +33,14 @@ exact-head check must succeed, only declared skips, before normal matched-head
 merge with parent/tree verification. A final library package release and Lite
 pin adoption require the qualified native and packed results, not this claim.
 No material calibration, hardware, reference-firmware or physical-accuracy claim.
+
+The source successor adds only the agreed hinge IDL rows, a focused verifier,
+built/packed scalar/SIMD verification steps and explanatory documentation. The
+native pin now identifies qualified native merge
+`afdb16ddd4f4d5f2ad16cc8814abe0c80114464e` from
+[native PR 3](https://github.com/CrispStrobe/JoltPhysics/pull/3). Its three
+exact-head CI jobs passed; an independent reader accepted the retained native
+artifact and unchanged zero-rotor baseline trace. Those bounded native results
+do not qualify this WebAssembly build or packed package. Package version
+`1.1.0-bw.8` identifies this candidate; no release tag or Lite adoption has
+occurred. Compiler/toolchain pins and old regression thresholds remain intact.

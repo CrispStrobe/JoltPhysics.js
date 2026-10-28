@@ -235,3 +235,86 @@ rotation and velocity from their respective previous-package controls exactly.
 The packed tarball repeats these checks, alongside all original gear, collision,
 rack and regression-hash controls. No app dependency advances before the
 producer, binding build, package and current app qualification pass.
+
+## Relative rotor binding source candidate (not built or released)
+
+The hinge binding candidate exposes `mReflectedRotorInertia` (float, default
+zero), `SetReflectedRotorInertia(float)` (boolean), and float getters
+`GetReflectedRotorInertia()`, `GetRotorAngularVelocity()` and
+`GetTotalLambdaRotor()`. Reflected inertia is in kg m², scalar speed in rad/s,
+and the signed current rotor impulse in N m s. Positive impulse applies a
+negative body1 and positive body2 angular impulse and decreases scalar speed.
+The scalar is native constraint state, with no hidden body or JS correction.
+
+The agreed native setter rejects negative/nonfinite values without changing
+state. Enabling initializes scalar speed from the current relative hinge rate;
+changing a positive inertia retains speed and clears its warm-start impulse;
+an identical value retains state; disabling clears scalar speed and impulse.
+The caller activates dynamic endpoints when configuration should wake them.
+Invalid settings must refuse creation. Native recorder state includes inertia,
+speed and warm-start impulse; no JS configuration replay replaces that state.
+
+`brickwright/verify-rotor-inertia.mjs` prepares independent unequal-inertia
+torque, momentum and energy/work checks for free and clamped pairs in both
+endpoint orders, reversal and variable dt. It also prepares default-zero exact
+trajectories, invalid/same-value/configuration/disable/reenable checks, exact
+native recorder restoration (including shared rotors), and offset anisotropic
+bodies joined to an ordinary transverse hinge. The latter checks anchor-point
+velocities and locked angular components that a JS common-rate kick violated.
+Body masses and inertia tensors must remain unchanged. The existing release
+workflow checks built and packed scalar/SIMD modules, retaining every existing
+gear/rope/filter and regression-hash guard.
+
+Each consumer writes a distinct `bw.relative-rotor.trace.v2` JSON observation
+with at most 200 single-step samples per case. Initial body/hinge parameters,
+actual before/after poses, rates, inertia, native scalar/impulses and commands
+allow separate analytic and constraint auditing. Configuration and recorder
+boundaries are explicit events. Neighboring-joint cases include paired Jr0
+baselines; restore cases retain genuinely different intervening configurations.
+Actual checkout/event/native identities, verifier/module/archive hashes, Node
+and package versions, phase and flavor distinguish all four consumers. These
+claims require independent CI/source/package admission; self-reported expected
+values and booleans are not sufficient evidence. The separate observations
+artifact retains partial first-failure traces marked `complete:false`; these
+are diagnostics and cannot qualify a consumer. Existing package artifacts and
+hash guards retain their original contents.
+
+Packed and built rotor fixtures use the shipped Lite motor iteration boundary:
+30 velocity iterations and five initial position iterations. Actual native
+override getters and global physics settings are retained in the observations;
+the fixtures do not qualify higher-iteration operation. All original precision
+thresholds and commands remain. Global and body sleeping are disabled, matching
+the current Lite core default. These scenes do not qualify arbitrary sleeping
+or out-of-band body-rate changes. Disable/reenable explicitly resynchronizes
+the scalar from the actual relative rate and is a recorded control, rather
+than an implicit per-step reset. Energy/work checks apply to the active,
+constant-inertia intervals, not across configuration changes or every possible
+external API lifetime.
+
+Velocity-constraint residuals use the native solve's pre-integration hinge axes
+and anchor arms with solved velocities. Geometric gaps, body momentum and energy
+use the actual post-step pose. Evaluating the solved Jacobian at the later pose
+would conflate integration/frame drift with a velocity-constraint violation.
+
+This checkpoint deliberately retains native pin
+`84f66c4dd4cb18f4c7be1bfdedb3d9f6d86ac5ff`, package version and toolchain pins.
+That native revision does not yet implement this API: this binding checkpoint
+is not a buildable combined release. Only a separately qualified landed native
+revision supplied for integration may replace it. No generated glue/types,
+native execution, packed bytes, release or all-model acceptance is claimed by
+source/syntax review. Hosted qualification must admit the actual combined
+source and repeated built/packed controls before any release or consumer pin.
+
+
+## Relative rotor package candidate (1.1.0-bw.8)
+
+The optional native hinge rotor is pinned to qualified
+[native merge afdb16d](https://github.com/CrispStrobe/JoltPhysics/commit/afdb16ddd4f4d5f2ad16cc8814abe0c80114464e).
+It preserves bare body mass and inertia and participates in ordinary constraint
+iterations and same-build state recording. The default reflected inertia is zero.
+
+The new hinge bindings expose reflected inertia, scalar rotor velocity and the
+solved rotor impulse. Built and packed scalar/SIMD tests record bounded raw
+observations for independent audit. Their qualification is pending; no package
+release, Lite pin adoption, full-model or physical-accuracy claim follows from
+the native source results. See `Docs/BrickwrightRelativeRotorScope.md`.
