@@ -279,6 +279,18 @@ artifact retains partial first-failure traces marked `complete:false`; these
 are diagnostics and cannot qualify a consumer. Existing package artifacts and
 hash guards retain their original contents.
 
+Packed and built rotor fixtures use the shipped Lite motor iteration boundary:
+30 velocity iterations and five initial position iterations. Actual native
+override getters and global physics settings are retained in the observations;
+the fixtures do not qualify higher-iteration operation. All original precision
+thresholds and commands remain. Global and body sleeping are disabled, matching
+the current Lite core default. These scenes do not qualify arbitrary sleeping
+or out-of-band body-rate changes. Disable/reenable explicitly resynchronizes
+the scalar from the actual relative rate and is a recorded control, rather
+than an implicit per-step reset. Energy/work checks apply to the active,
+constant-inertia intervals, not across configuration changes or every possible
+external API lifetime.
+
 This checkpoint deliberately retains native pin
 `84f66c4dd4cb18f4c7be1bfdedb3d9f6d86ac5ff`, package version and toolchain pins.
 That native revision does not yet implement this API: this binding checkpoint

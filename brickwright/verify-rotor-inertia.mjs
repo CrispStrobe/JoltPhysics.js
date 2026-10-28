@@ -48,6 +48,7 @@ function world() {
     const ji = new J.JoltInterface(settings); J.destroy(settings);
     const ps = ji.GetPhysicsSystem(), bi = ps.GetBodyInterface(), bodies = [], hinges = [], events=[], steps=[];
     let segment=0;
+    const physics=new J.PhysicsSettings();physics.mAllowSleeping=false;ps.SetPhysicsSettings(physics);J.destroy(physics);
     const gravity = new J.Vec3(0, 0, 0); ps.SetGravity(gravity); J.destroy(gravity);
     function body({position = [0,0,0], inertia = [.002,.002,.002], mass = .1, fixed = false, rotation = [0,0,0,1]} = {}) {
         const shape = new J.SphereShape(.004), p = new J.RVec3(...position), q = new J.Quat(...rotation);
@@ -76,12 +77,15 @@ function world() {
         const normal = new J.Vec3(...(Math.abs(axis[0]) < .9 ? cross(axis,[1,0,0]) : cross(axis,[0,1,0])));
         s.mPoint1 = p; s.mPoint2 = p; s.mHingeAxis1 = ax; s.mHingeAxis2 = ax;
         s.mNormalAxis1 = normal; s.mNormalAxis2 = normal;
-        s.mNumVelocityStepsOverride = 64; s.mNumPositionStepsOverride = 16;
+        // Match the shipped Lite motor settings; higher iterations cannot qualify these fixtures.
+        s.mNumVelocityStepsOverride = 30; s.mNumPositionStepsOverride = 5;
         if (jr !== undefined) s.mReflectedRotorInertia = jr;
         const constraint = s.Create(a.b, b.b);
         J.destroy(p); J.destroy(ax); J.destroy(normal); J.destroy(s);
         assert.ok(J.getPointer(constraint) !== 0, 'valid settings create a real constraint');
         const h = J.castObject(constraint, J.HingeConstraint); ps.AddConstraint(h);
+        assert.equal(h.GetNumVelocityStepsOverride(),30,'shipped motor velocity iterations');
+        assert.equal(h.GetNumPositionStepsOverride(),5,'shipped initial motor position iterations');
         for (const name of ['SetReflectedRotorInertia','GetReflectedRotorInertia','GetRotorAngularVelocity','GetTotalLambdaRotor']) assert.equal(typeof h[name], 'function', `native API ${name}`);
         hinges.push({id:`h${hinges.length}`,h,a,b,axis,point}); return h;
     }
@@ -113,7 +117,7 @@ function world() {
         const {b,fixed,id}=item,p=fixed?null:b.GetMotionProperties();
         return {id,position:xyz(b.GetCenterOfMassPosition()),rotation:quat(b.GetRotation()),velocity:xyz(b.GetLinearVelocity()),omega:xyz(b.GetAngularVelocity()),
             awake:b.IsActive(),sleepingAllowed:b.GetAllowSleeping(),gyroscopic:b.GetApplyGyroscopicForce(),inverseMass:p?p.GetInverseMass():0,inverseInertia:p?xyz(p.GetInverseInertiaDiagonal()):null,inertiaRotation:p?quat(p.GetInertiaRotation()):null};
-    }),hinges:hinges.map(({id,h})=>({id,active:h.IsActive(),jr:h.GetReflectedRotorInertia(),wr:h.GetRotorAngularVelocity(),lambdaRotor:h.GetTotalLambdaRotor(),lambdaMotor:h.GetTotalLambdaMotor(),
+    }),hinges:hinges.map(({id,h})=>({id,active:h.IsActive(),velocityStepsOverride:h.GetNumVelocityStepsOverride(),positionStepsOverride:h.GetNumPositionStepsOverride(),jr:h.GetReflectedRotorInertia(),wr:h.GetRotorAngularVelocity(),lambdaRotor:h.GetTotalLambdaRotor(),lambdaMotor:h.GetTotalLambdaMotor(),
         motorState:h.GetMotorState(),targetVelocity:h.GetTargetAngularVelocity(),minTorque:h.GetMotorSettings().mMinTorqueLimit,maxTorque:h.GetMotorSettings().mMaxTorqueLimit,
         localAxis1:xyz(h.GetLocalSpaceHingeAxis1()),localAxis2:xyz(h.GetLocalSpaceHingeAxis2()),localPoint1:xyz(h.GetLocalSpacePoint1()),localPoint2:xyz(h.GetLocalSpacePoint2())}))});
     const step = (count = 1, dt = DT) => {for (let i=0; i<count; i++) {
@@ -123,7 +127,8 @@ function world() {
     const restore = (recorder,label) => {const before=state();recorder.Rewind();assert.equal(ps.RestoreState(recorder),true);segment++;events.push({kind:'restore',label,step:steps.length,before,after:state()});};
     const checkpoint = (recorder,label) => {ps.SaveState(recorder,J.EStateRecorderState_All);events.push({kind:'checkpoint',label,step:steps.length,after:state()});};
     const event = data => events.push({...data,step:steps.length});
-    const evidence = () => ({inputs:{bodies:bodies.map(({id,mass,inertia,fixed,position,rotation})=>({id,mass,inertia,fixed,position,rotation,gyroscopic:!fixed,sleepingAllowed:false})),hinges:hinges.map(({id,a,b,axis,point})=>({id,body1:a.id,body2:b.id,axis,point}))},events,steps});
+    const evidence = () => ({inputs:{physicsSettings:{velocitySteps:ps.GetPhysicsSettings().mNumVelocitySteps,positionSteps:ps.GetPhysicsSettings().mNumPositionSteps,allowSleeping:ps.GetPhysicsSettings().mAllowSleeping},
+        bodies:bodies.map(({id,mass,inertia,fixed,position,rotation})=>({id,mass,inertia,fixed,position,rotation,gyroscopic:!fixed,sleepingAllowed:false})),hinges:hinges.map(({id,a,b,axis,point})=>({id,body1:a.id,body2:b.id,axis,point,velocityStepsOverride:30,positionStepsOverride:5}))},events,steps});
     return {ji,ps,bi,bodies,hinges,body,hinge,configure,motor,snapshot,tensorIdentity,momentum,step,restore,checkpoint,event,state,evidence,destroy:()=>J.destroy(ji)};
 }
 function scene(name, run) {
