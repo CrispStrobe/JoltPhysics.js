@@ -304,3 +304,17 @@ revision supplied for integration may replace it. No generated glue/types,
 native execution, packed bytes, release or all-model acceptance is claimed by
 source/syntax review. Hosted qualification must admit the actual combined
 source and repeated built/packed controls before any release or consumer pin.
+
+
+## Relative rotor package candidate (1.1.0-bw.8)
+
+The optional native hinge rotor is pinned to qualified
+[native merge afdb16d](https://github.com/CrispStrobe/JoltPhysics/commit/afdb16ddd4f4d5f2ad16cc8814abe0c80114464e).
+It preserves bare body mass and inertia and participates in ordinary constraint
+iterations and same-build state recording. The default reflected inertia is zero.
+
+The new hinge bindings expose reflected inertia, scalar rotor velocity and the
+solved rotor impulse. Built and packed scalar/SIMD tests record bounded raw
+observations for independent audit. Their qualification is pending; no package
+release, Lite pin adoption, full-model or physical-accuracy claim follows from
+the native source results. See `Docs/BrickwrightRelativeRotorScope.md`.
