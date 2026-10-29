@@ -11,6 +11,10 @@ const modulePath = process.argv[2];
 assert.ok(modulePath, 'usage: node brickwright/verify-rotor-inertia.mjs module.js');
 const option = name => process.argv.slice(3).find(a => a.startsWith(`--${name}=`))?.slice(name.length+3);
 const phase=option('phase'),flavor=option('flavor'),out=option('out');
+const controls=option('controls')||'legacy',previousEngine=process.argv.includes('--previous-engine');
+assert.ok(['legacy','motor-block'].includes(controls));
+assert.ok(!previousEngine || (controls==='motor-block' && phase==='packed'));
+const reportSchema=controls==='legacy'?'bw.relative-rotor.trace.v2':'bw.relative-rotor.motor-block.trace.v1';
 assert.ok(['built','packed'].includes(phase) && ['wasm-compat','simd.wasm-compat'].includes(flavor) && out,'explicit phase/flavor/output required');
 assert.equal(path.basename(modulePath),`jolt-physics.${flavor}.js`);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -23,6 +27,17 @@ const identity={sourceHead,eventHead:process.env.GITHUB_SHA,nativeHead,nodeVersi
     verifierSha256:sha(readFileSync(new URL(import.meta.url))),moduleSha256:sha(readFileSync(modulePath)),
     packageVersion:JSON.parse(readFileSync(path.join(path.dirname(path.dirname(path.resolve(modulePath))),'package.json'),'utf8')).version,
     packageSha256:phase==='packed'?sha(readFileSync(option('package'))):null};
+if(controls==='motor-block') {
+    identity.controlSet=controls;identity.role=previousEngine?'previous-engine':'candidate';
+    if(previousEngine) {
+        assert.equal(identity.packageVersion,'1.1.0-bw.8');
+        assert.equal(identity.packageSha256,'9a5f76afa7b04e6bc097c3c2e0d3825fd191e498ab1712687e5dff62ceae71c1');
+        const previousModules={'wasm-compat':'ff915b0cf62239372396c9c33a76cf2a1e83bb4441674706e61d6c3b8ffdb75c',
+            'simd.wasm-compat':'23e48c9cb92c628872d746623c596022f7d1f1c0da0028b4412b018dc8c7d48e'};
+        assert.equal(identity.moduleSha256,previousModules[flavor]);
+        identity.nativeHead='afdb16ddd4f4d5f2ad16cc8814abe0c80114464e';
+    }
+}
 const J = await (await import(pathToFileURL(modulePath).href)).default();
 const DT = .005, JR = .003, TORQUE = .001;
 const xyz = v => [v.GetX(), v.GetY(), v.GetZ()];
@@ -132,11 +147,12 @@ function world() {
     return {ji,ps,bi,bodies,hinges,body,hinge,configure,motor,snapshot,tensorIdentity,momentum,step,restore,checkpoint,event,state,evidence,destroy:()=>J.destroy(ji)};
 }
 function scene(name, run) {
+    if(name.startsWith('motor-block-') !== (controls==='motor-block')) return;
     const w = world();
     try {const result = run(w); results.push({name, ...result,...w.evidence()});}
     catch(error) {
         // Preserve the first actual failing state; it is diagnostic, never acceptance.
-        writeFileSync(out,JSON.stringify({schema:'bw.relative-rotor.trace.v2',identity,complete:false,
+        writeFileSync(out,JSON.stringify({schema:reportSchema,identity,complete:false,
             results:[...results,{name,error:String(error),...w.evidence()}]})+'\n');
         throw error;
     } finally {w.destroy();}
@@ -273,6 +289,70 @@ for(const shared of [false,true]) for(const zeroBaseline of [true,false]) scene(
     return {shared,zeroBaseline,maxPointSpeed,maxLockedRate,maxPointGap};
 });
 
-const report={schema:'bw.relative-rotor.trace.v2',identity,complete:true,results,boundary:'Bounded native state/impulse facts; independent source/package admission and analytic auditing required. No physical/all-model acceptance.'};
+// New controls only: actual inverse-inertia admission precedes the hinge.
+// Existing eleven scene bodies and all their assertions remain unchanged.
+for(const mode of ['brake','reversed','clamped']) scene(`motor-block-${mode}`,w=>{
+    const F=Math.fround,dt=F(.005),ia=F(2.3871996117945184e-7),ib=F(7.750766826354666e-6),jr=F(.0004529942571492882),c=F(.007881959086455769);
+    const limited=mode==='clamped',reverse=mode==='reversed',limit=limited?F(.001):F(1e6);
+    const a=w.body({inertia:[ia,ia,ia]}),b=w.body({inertia:[ib,ib,ib]});
+    for(const item of [a,b]) {
+        const motion=item.b.GetMotionProperties(),expected=F(1/item.inertia[0]);
+        assert.deepEqual(xyz(motion.GetInverseInertiaDiagonal()),[expected,expected,expected],'actual small inertia admitted');
+        assert.deepEqual(quat(motion.GetInertiaRotation()),[0,0,0,1],'principal inertia frame');
+        assert.equal(motion.GetInverseMass(),F(1/item.mass),'inertia admission preserves mass');
+    }
+    const h=w.hinge(a,b,[0,0,0],[0,1,0],jr),m=h.GetMotorSettings();
+    m.mMinTorqueLimit=-limit;m.mMaxTorqueLimit=limit;
+    const spring=m.mSpringSettings;spring.mMode=J.ESpringMode_StiffnessAndDamping;
+    spring.mStiffness=F(c/F(2*dt));spring.mDamping=F(c/2);
+    h.SetMotorState(J.EMotorState_Position);
+    const admittedSpring=h.GetMotorSettings().mSpringSettings;
+    const actualK=admittedSpring.mStiffness,actualDamping=admittedSpring.mDamping;
+    assert.equal(admittedSpring.mMode,J.ESpringMode_StiffnessAndDamping,'actual spring mode');
+    assert.equal(h.GetMotorState(),J.EMotorState_Position,'actual motor mode');
+    const gamma=F(1/F(dt*F(actualDamping+F(dt*actualK))));
+    const tensor=w.tensorIdentity(),observations=[],violations=[];
+    let driven=false,movingBrake=false,clamped=false;
+    for(let index=0;index<100;index++) {
+        let command=index<30?F(.015):index<(limited?50:60)?F(-.015):0;if(reverse)command=-command;
+        const theta=h.GetCurrentAngle();h.SetTargetAngle(theta+command/actualK);
+        const target=h.GetTargetAngle(),difference=F(theta-target);
+        const error=difference>Math.PI?F(difference-F(2*Math.PI)):difference<-Math.PI?F(difference+F(2*Math.PI)):difference;
+        // This is SOURCE-DERIVED from actual float settings/pose, not an internal cache getter.
+        const bias=F(F(F(dt*actualK)*gamma)*error);
+        w.event({kind:'motor-block-command',index,commandTorqueNm:command,thetaBefore:theta,targetAngle:target,
+            springMode:admittedSpring.mMode,motorState:h.GetMotorState(),targetVelocity:h.GetTargetAngularVelocity(),
+            actualMinTorque:h.GetMotorSettings().mMinTorqueLimit,actualMaxTorque:h.GetMotorSettings().mMaxTorqueLimit,derivation:'native-SpringPart-f32-inputs',stiffness:actualK,damping:actualDamping,dtNative:dt,positionErrorNative:error,
+            dtTimesStiffness:F(dt*actualK),dampingPlusDtStiffness:F(actualDamping+F(dt*actualK)),softnessDenominator:F(dt*F(actualDamping+F(dt*actualK))),
+            sourceDerivedGamma:gamma,sourceDerivedBias:bias});
+        const pre=w.state();w.step(1,dt);const post=w.state(),hm=post.hinges[0];
+        const beforeRate=pre.bodies[1].omega[1]-pre.bodies[0].omega[1],rate=post.bodies[1].omega[1]-post.bodies[0].omega[1];
+        const residual=rate+gamma*hm.lambdaMotor+bias,rotorResidual=rate-hm.wr,bound=F(dt*limit);
+        const lower=hm.lambdaMotor<=-bound,upper=hm.lambdaMotor>=bound;
+        const rowOK=lower?residual>=-1e-4:upper?residual<=1e-4:Math.abs(residual)<=1e-4;
+        const work=hm.lambdaMotor*rate,workBudget=32*2**-23*Math.abs(hm.lambdaMotor)*Math.max(1,Math.abs(beforeRate),Math.abs(rate));
+        const failures=[];
+        if(!hm.active)failures.push('inactive hinge');
+        if(hm.motorState!==J.EMotorState_Position)failures.push('motor state');
+        if(!rowOK)failures.push('motor KKT');
+        if(Math.abs(rotorResidual)>1e-4)failures.push('rotor row');
+        if(Math.abs(hm.lambdaMotor)>bound)failures.push('motor clamp');
+        if(command===0){if(bias!==0)failures.push('nonzero brake bias');if(work>workBudget)failures.push('brake passivity');if(Math.abs(beforeRate)>.01)movingBrake=true;}
+        else if(Math.abs(rate)>.01)driven=true;
+        if(limited&&(lower||upper))clamped=true;
+        observations.push({index,sourceDerivedGamma:gamma,sourceDerivedBias:bias,rateBefore:beforeRate,rateAfter:rate,
+            motorResidual:residual,rotorResidual,impulseBound:bound,motorWorkJ:work,workBudgetJ:workBudget,failures});
+        violations.push(...failures.map(kind=>({index,kind})));
+    }
+    if(!driven||!movingBrake)violations.push({kind:'driven and moving brake nonvacuity'});
+    if(limited&&!clamped)violations.push({kind:'active clamp nonvacuity'});
+    assert.deepEqual(w.tensorIdentity(),tensor,'motor block preserves bare tensors and mass');
+    return {inputsMotor:{ia,ib,jr,c,dt,torqueLimit:limit,stiffness:actualK,damping:actualDamping,sourceDerivedGamma:gamma},
+        observations,violations,driven,movingBrake,clamped};
+});
+
+const report={schema:reportSchema,identity,complete:true,results,boundary:'Bounded native state/impulse facts; independent source/package admission and analytic auditing required. No physical/all-model acceptance.'};
 writeFileSync(out,JSON.stringify(report)+'\n');
 console.log(JSON.stringify({schema:report.schema,identity,outputSha256:sha(readFileSync(out)),cases:results.map(({name,steps})=>({name,steps:steps.length}))}));
+
+if(controls==='motor-block' && results.some(r=>r.violations.length)) process.exitCode=1;
