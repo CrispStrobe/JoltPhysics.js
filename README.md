@@ -170,3 +170,12 @@ Almost everything else can be destroyed straight after it has been passed to Jol
 ## License
 
 The project is distributed under the [MIT license](LICENSE).
+
+
+### Brickwright package candidate
+
+The owned fork's `1.1.0-bw.9` candidate integrates the qualified native coupled
+hinge motor/rotor solve. Built and packed scalar/SIMD qualification is pending;
+this source checkpoint is not a release or an application acceptance claim.
+Existing exports, API declarations and license notices are unchanged. See
+[the scoped qualification plan](Docs/BrickwrightRotorMotorBlockScope.md).

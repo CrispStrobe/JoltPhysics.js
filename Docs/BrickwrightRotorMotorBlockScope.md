@@ -1,6 +1,6 @@
 # Coupled hinge motor and rotor package scope
 
-Status: CLAIM ONLY; implementation and qualification pending.
+Status: SOURCE CANDIDATE; built and packed qualification pending.
 Owner: Codex, continuing the user-authorized Robot Lab physics work.
 Integration target: `brickwright/part-pair-filter` at
 `f488edd3c9945243331eed7e3d887a1e95868716` in this owned fork.
@@ -13,11 +13,11 @@ braking to about 353.906 degrees. Preserve that failure and every old guard;
 prior library qualification does not qualify this consumer.
 
 The [native owning fork's PR 6](https://github.com/CrispStrobe/JoltPhysics/pull/6)
-contains a coupled soft-motor/rotor candidate. Its latest hosted checks succeeded,
-but independent observation acceptance remains unresolved at this claim.
-It is not yet qualified or merged. Neither that head nor any predicted merge
-may become this fork's native pin before independently accepted native evidence
-and the actual landed merge identity are supplied by the owning lane.
+is qualified and normally merged at
+`0ff27c94898c910cb024b4e74218818358ee4852`. All enabled native checks and
+independent retained-observation audits passed with unchanged physics guards.
+Earlier fixture failures and exact-float observer refusals remain preserved.
+This native result does not qualify the WebAssembly package or Lite consumer.
 
 ## Bounded ownership
 
@@ -73,3 +73,40 @@ provenance within the user-authorized work. Affected Lite endpoint programmes, m
 rendered worker/save-reopen qualification remain in the consumer lane. This
 claim does not establish full-model acceptance, hardware accuracy, arbitrary
 sleeping behavior, contact calibration, deployment or an application release.
+
+## Implementation checkpoint
+
+The candidate pins that actual native merge and identifies package
+`1.1.0-bw.9`; the root lockfile version metadata is made consistent without
+changing dependency resolutions. Existing binding API and export/type paths
+are unchanged; no IDL or generated type repair is required by this source.
+
+The verifier's default invocation retains the eleven existing scenes and
+1,215 steps. A separate `--controls=motor-block` invocation records three new
+100-step scenes: both command signs and an active motor clamp. It explicitly
+reads back the admitted small inertia, mass, native spring settings, target,
+motor state and impulses. The limited scene uses 30 positive / 20 negative /
+50 zero-duty steps; the others use 30 / 30 / 40, reversing signs in the reverse
+scene. All require driven and moving-brake observations. New motor KKT and
+rotor residual bounds are `1e-4`; existing point/transverse `2e-4` guards remain.
+
+Softness and bias observations are explicitly source-derived from native float
+readbacks using the pinned SpringPart operation sequence, not presented as
+native cached values. Passivity requires an exactly zero effective bias and
+uses implicit motor impulse times solved relative rate. Its predeclared float
+observation budget is 32 binary32 epsilons times absolute motor impulse times
+`max(1, abs(rate_before), abs(rate_after))`; this does not authorize arbitrary
+solver error or fitted endpoint tolerances.
+
+Built and packed scalar/SIMD controls emit four distinct new reports separately
+from all four old scene reports. Two meaningful negative controls execute only
+the new three scenes against the exact qualified bw.8 scalar/SIMD archive,
+verified by SHA256, SHA512 integrity, package version and both module hashes.
+Previous-engine identity is explicit. Reports preserve all observed steps and
+violations; `complete:true` means a complete observation, not acceptance, and
+physical violations produce exit status one. No old successful scene is rerun
+in that previous engine just for inspection.
+
+No local build or engine execution has occurred. All WebAssembly results,
+package qualification, publication and consumer endpoint repairs remain pending.
+The separate Lite clutch-bench physical 24:40 failure is not claimed repaired.

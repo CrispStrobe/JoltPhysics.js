@@ -43,6 +43,33 @@ jobs:
           node brickwright/verify-rotor-inertia.mjs dist/jolt-physics.$flavor.js --phase=built --flavor=$flavor --out=rotor-$flavor-built.json
         done
 
+    - name: Verify high-ratio motor rotor block (built scalar and SIMD)
+      shell: bash
+      run: |
+        set -euo pipefail
+        for flavor in wasm-compat simd.wasm-compat; do
+          node brickwright/verify-rotor-inertia.mjs dist/jolt-physics.$flavor.js --phase=built --flavor=$flavor --controls=motor-block --out=rotor-motor-block-$flavor-built.json
+        done
+
+    - name: New motor block negative controls against exact qualified bw.8 package
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p previous-motor-engine
+        curl -fL https://github.com/CrispStrobe/JoltPhysics.js/releases/download/bw.8-qualified-20261028/jolt-physics-1.1.0-bw.8.tgz -o previous-motor-engine/engine.tgz
+        echo '9a5f76afa7b04e6bc097c3c2e0d3825fd191e498ab1712687e5dff62ceae71c1  previous-motor-engine/engine.tgz' | sha256sum -c -
+        actual="sha512-$(openssl dgst -sha512 -binary previous-motor-engine/engine.tgz | base64 -w0)"
+        test "$actual" = 'sha512-VspwNAczNbIrliXdRFAtphel48yM06JWKtfH+K6yXTtyRfo7mOxMi37LnnKbhygIkXpxY54kRZZoZ+iJZ2AnUQ=='
+        tar xzf previous-motor-engine/engine.tgz -C previous-motor-engine
+        for flavor in wasm-compat simd.wasm-compat; do
+          set +e
+          node brickwright/verify-rotor-inertia.mjs previous-motor-engine/package/dist/jolt-physics.$flavor.js --phase=packed --flavor=$flavor --controls=motor-block --previous-engine --package=previous-motor-engine/engine.tgz --out=rotor-motor-block-$flavor-previous.json
+          status=$?
+          set -e
+          test "$status" = 1
+          node -e 'const fs=require("fs");const r=JSON.parse(fs.readFileSync(process.argv[1]));if(!r.complete||r.results.length!==3||!r.results.some(c=>c.violations.length))process.exit(1)' "rotor-motor-block-$flavor-previous.json"
+        done
+
     - name: Verify native rope impulses and unchanged trajectories
       shell: bash
       run: |
@@ -75,6 +102,8 @@ jobs:
         node brickwright/verify.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --assert
         node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --phase=packed --flavor=wasm-compat --package="$TGZ" --out=rotor-wasm-compat-packed.json
         node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --phase=packed --flavor=simd.wasm-compat --package="$TGZ" --out=rotor-simd.wasm-compat-packed.json
+        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --phase=packed --flavor=wasm-compat --controls=motor-block --package="$TGZ" --out=rotor-motor-block-wasm-compat-packed.json
+        node brickwright/verify-rotor-inertia.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --phase=packed --flavor=simd.wasm-compat --controls=motor-block --package="$TGZ" --out=rotor-motor-block-simd.wasm-compat-packed.json
         node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.wasm-compat.js --reference=/tmp/previous-rope-engine/wasm-compat.json
         node brickwright/verify-distance-impulse.mjs /tmp/packed/package/dist/jolt-physics.simd.wasm-compat.js --reference=/tmp/previous-rope-engine/simd.wasm-compat.json
 

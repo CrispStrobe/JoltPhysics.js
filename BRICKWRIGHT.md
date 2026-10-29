@@ -318,3 +318,16 @@ solved rotor impulse. Built and packed scalar/SIMD tests record bounded raw
 observations for independent audit. Their qualification is pending; no package
 release, Lite pin adoption, full-model or physical-accuracy claim follows from
 the native source results. See `Docs/BrickwrightRelativeRotorScope.md`.
+
+
+## Coupled motor/rotor package candidate (1.1.0-bw.9)
+
+This candidate pins qualified native merge
+`0ff27c94898c910cb024b4e74218818358ee4852` and adds separate high-inertia-ratio
+soft-motor/brake/clamp controls for built and packed scalar/SIMD modules.
+The eleven previous rotor scenes, gear/rope/filter checks, non-gear regression
+hash and notices remain gates. Exact bw.8 modules provide new-control negative
+experiments; prior successful scenes are not replayed in that engine.
+Source preparation is not WebAssembly, package or consumer qualification.
+See `Docs/BrickwrightRotorMotorBlockScope.md`; the Lite clutch-bench endpoint
+failure remains an independent consumer gate. No release or pin adoption follows.
