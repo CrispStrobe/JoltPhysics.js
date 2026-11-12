@@ -2717,6 +2717,10 @@ interface BodyIDVector {
 };
 
 interface PhysicsSystem {
+	// Explicit source/surface role; default empty. Configure only in an externally
+	// serialized idle world. Session configuration is not part of SaveState.
+	boolean SetSimInternalEdgeRemovalPair([Const, Ref] BodyID inShape1, [Const, Ref] BodyID inShape2, boolean inEnable);
+	boolean ClearSimInternalEdgeRemovalPairs();
 	void SetGravity([Const, Ref] Vec3 inGravity);
 	[Value] Vec3 GetGravity();
 	[Const, Ref] PhysicsSettings GetPhysicsSettings();
