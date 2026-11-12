@@ -271,6 +271,13 @@ if (NOT BUILD_WASM_COMPAT_ONLY)
 		DEPENDS jolt-bindings ${JOLT_FRONT_MATTER_FILE} ${JOLT_TARGETS} ${JOLT_IDL_FILE} ${JOLT_HEADER_FILE}
 		COMMENT "Building JoltPhysics.js webassembly"
 		VERBATIM)
+	if (ENABLE_MULTI_THREADING)
+		add_custom_command(
+			OUTPUT ${OUTPUT_BASE_NAME}.wasm.js ${OUTPUT_BASE_NAME}.wasm.wasm APPEND
+			COMMAND ${PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/brickwright/fix-node-pthread-footer.py ${OUTPUT_BASE_NAME}.wasm.js
+			DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/brickwright/fix-node-pthread-footer.py
+			VERBATIM)
+	endif()
 	add_custom_target(jolt-wasm ALL DEPENDS ${OUTPUT_BASE_NAME}.wasm.js ${OUTPUT_BASE_NAME}.wasm.wasm)
 endif()
 
@@ -281,4 +288,11 @@ add_custom_command(
 	DEPENDS jolt-bindings ${JOLT_FRONT_MATTER_FILE} ${JOLT_TARGETS} ${JOLT_IDL_FILE} ${JOLT_HEADER_FILE}
 	COMMENT "Building JoltPhysics.js compat webassembly"
 	VERBATIM)
+if (ENABLE_MULTI_THREADING)
+	add_custom_command(
+		OUTPUT ${OUTPUT_BASE_NAME}.wasm-compat.js APPEND
+		COMMAND ${PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/brickwright/fix-node-pthread-footer.py ${OUTPUT_BASE_NAME}.wasm-compat.js
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/brickwright/fix-node-pthread-footer.py
+		VERBATIM)
+endif()
 add_custom_target(jolt-wasm-compat ALL DEPENDS ${OUTPUT_BASE_NAME}.wasm-compat.js)
