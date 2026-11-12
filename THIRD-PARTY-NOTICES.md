@@ -15,3 +15,14 @@
 Build tools are not bundled in this package. Preserve these notices when
 redistributing the corresponding code. Package qualification is scoped to its
 recorded source and artifacts; these notices do not assert blanket legal clearance.
+
+
+The qualified Emscripten 6.0.2 runtime inputs also retain their original notices:
+
+- `LICENSES/Musl.txt`: `system/lib/libc/musl/COPYRIGHT`.
+- `LICENSES/LLVM-libcxx.txt`: `system/lib/libcxx/LICENSE.TXT`.
+- `LICENSES/LLVM-libcxxabi.txt`: `system/lib/libcxxabi/LICENSE.TXT`.
+- `LICENSES/LLVM-compiler-rt.txt`: `system/lib/compiler-rt/LICENSE.TXT`.
+
+These are exact notice copies from the SDK source inputs. Retain them alongside
+the Emscripten and Jolt notices when redistributing the generated modules.
