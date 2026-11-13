@@ -1,6 +1,6 @@
 {
 	"name": "jolt-physics",
-	"version": "1.1.0-bw.9",
+	"version": "1.1.0-bw.10",
 	"description": "A WebAssembly port of JoltPhysics, a rigid body physics and collision detection library, suitable for games and VR applications",
 	"type": "module",
 	"main": "dist/jolt-physics.wasm-compat.js",
@@ -74,6 +74,10 @@
 		"./dist/jolt-physics.multithread.wasm.d.ts",
 		"./dist/jolt-physics.multithread.wasm.wasm",
 		"./dist/types.d.ts",
+		"BRICKWRIGHT.md",
+		"Docs/BrickwrightInternalEdgePairsScope.md",
+		"THIRD-PARTY-NOTICES.md",
+		"LICENSES",
 		"asm",
 		"wasm",
 		"wasm-compat",

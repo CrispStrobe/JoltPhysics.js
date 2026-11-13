@@ -331,3 +331,14 @@ experiments; prior successful scenes are not replayed in that engine.
 Source preparation is not WebAssembly, package or consumer qualification.
 See `Docs/BrickwrightRotorMotorBlockScope.md`; the Lite clutch-bench endpoint
 failure remains an independent consumer gate. No release or pin adoption follows.
+
+
+### Node pthread bootstrap output guard
+
+The multithread external-Wasm and compatibility build targets run
+`brickwright/fix-node-pthread-footer.py` after JavaScript generation. Emscripten
+6.0.2 release output can lose the parentheses around an awaited dynamic import
+in the Node worker detector. The guard corrects exactly that trailing expression,
+leaves the factory and Wasm body unchanged, accepts the already correct debug
+form, and refuses missing or ambiguous detector output. Run its focused controls
+with `python3 brickwright/test-node-pthread-footer.py`.
