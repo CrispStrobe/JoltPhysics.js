@@ -342,3 +342,17 @@ in the Node worker detector. The guard corrects exactly that trailing expression
 leaves the factory and Wasm body unchanged, accepts the already correct debug
 form, and refuses missing or ambiguous detector output. Run its focused controls
 with `python3 brickwright/test-node-pthread-footer.py`.
+
+## bw.11 SIMD collision sweeps
+
+The bw.11 release uses the published bw.10 package as its base. Its
+single-thread SIMD compat module comes from the compound sweep
+optimization in JoltPhysics `7085d0d` and wrapper `cd40daa`.
+The other binaries and declarations are inherited byte for byte from
+bw.10. The binding schema is the same across variants.
+
+Use `brickwright/pack-bw11-simd-release.mjs` with the original
+`bw.10-qualified-20261112` tarball and the qualified SIMD build. The
+script verifies both input hashes and ensures that the export map
+matches the base archive. Run `brickwright/verify-release-exports.mjs`
+on the unpacked output.
