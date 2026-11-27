@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Honor an explicit parallelism cap for local builds.
+export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-$(getconf _NPROCESSORS_ONLN)}"
+
 if [ -z $1 ] 
 then
 	BUILD_TYPE=Distribution
@@ -16,20 +19,20 @@ mkdir dist
 if [ $BUILD_TYPE != "Debug" ]
 then
 	cmake -B Build/Debug/ST -DCMAKE_BUILD_TYPE=Debug -DBUILD_WASM_COMPAT_ONLY=ON "${@}"
-	cmake --build Build/Debug/ST -j`nproc`
+	cmake --build Build/Debug/ST
 
 	cmake -B Build/Debug/MT -DENABLE_MULTI_THREADING=ON -DENABLE_SIMD=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_WASM_COMPAT_ONLY=ON "${@}"
-	cmake --build Build/Debug/MT -j`nproc`
+	cmake --build Build/Debug/MT
 
 	mv ./dist/jolt-physics.wasm-compat.js ./dist/jolt-physics.debug.wasm-compat.js
 	mv ./dist/jolt-physics.multithread.wasm-compat.js ./dist/jolt-physics.debug.multithread.wasm-compat.js
 fi
 
 cmake -B Build/$BUILD_TYPE/ST -DCMAKE_BUILD_TYPE=$BUILD_TYPE "${@}"
-cmake --build Build/$BUILD_TYPE/ST -j`nproc`
+cmake --build Build/$BUILD_TYPE/ST
 
 cmake -B Build/$BUILD_TYPE/MT -DENABLE_MULTI_THREADING=ON -DENABLE_SIMD=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE "${@}"
-cmake --build Build/$BUILD_TYPE/MT -j`nproc`
+cmake --build Build/$BUILD_TYPE/MT
 
 if [ $BUILD_TYPE = "Debug" ]
 then
@@ -40,10 +43,12 @@ fi
 # Optional single-thread SIMD: no shared memory or cross-origin isolation.
 # Keep the existing scalar and multithread artifacts at their original names.
 cmake -B Build/$BUILD_TYPE/ST-SIMD -DENABLE_MULTI_THREADING=OFF -DENABLE_SIMD=ON -DBUILD_WASM_COMPAT_ONLY=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE "${@}"
-cmake --build Build/$BUILD_TYPE/ST-SIMD -j`nproc`
+cmake --build Build/$BUILD_TYPE/ST-SIMD
 
 # Update the worker URL in the copied wasm-compat.js files
-sed -i "s:jolt-physics.multithread.wasm-compat.js:jolt-physics.debug.multithread.wasm-compat.js:g" ./dist/jolt-physics.debug.multithread.wasm-compat.js
+debug_mt=./dist/jolt-physics.debug.multithread.wasm-compat.js
+sed 's:jolt-physics.multithread.wasm-compat.js:jolt-physics.debug.multithread.wasm-compat.js:g' "$debug_mt" > "$debug_mt.tmp"
+mv "$debug_mt.tmp" "$debug_mt"
 
 cat > ./dist/jolt-physics.d.ts << EOF
 import Jolt from "./types";
